@@ -65,7 +65,7 @@ The package is not on PyPI yet. Install the wheel from the
 [latest release](https://github.com/azhig/Langgraph-studio-oss/releases):
 
 ```bash
-pip install https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.0-py3-none-any.whl
+pip install https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.1-py3-none-any.whl
 ```
 
 ### Mode 1: mounted into `langgraph dev` (recommended)
