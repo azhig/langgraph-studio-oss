@@ -149,6 +149,19 @@ The same UI opens as a panel inside VS Code. The extension host makes the HTTP r
 to the Agent Server, so the webview needs no network access and nothing has to be
 installed in Python.
 
+**The extension does not start a server.** It connects to a LangGraph Agent Server that
+you run yourself, usually `langgraph dev` from your project:
+
+```bash
+pip install "langgraph-cli[inmem]"
+cd my-project                 # the directory with langgraph.json
+langgraph dev --no-browser    # listens on http://127.0.0.1:2024
+```
+
+Then tell the extension where it is: the default is `http://127.0.0.1:2024`; another
+address or port goes into the `langgraphStudio.target` setting or the **Connected** dialog
+in the panel header. If the server is not reachable, the panel shows these steps.
+
 Download the `.vsix` from the [latest release](https://github.com/azhig/Langgraph-studio-oss/releases)
 (or build it, see below), install it with `code --install-extension <file>.vsix`, then run **LangGraph Studio (Unofficial): Open**
 from the Command Palette.

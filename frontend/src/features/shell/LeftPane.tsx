@@ -5,6 +5,7 @@ import { GraphView } from "@/features/graph/GraphView";
 import { InterruptsMenu } from "@/features/graph/InterruptsMenu";
 import { InputPanel } from "@/features/input/InputPanel";
 import { LeftHeader } from "./Header";
+import { ConnectionHelp } from "./ConnectionHelp";
 
 /**
  * Left pane: header, the `Memory / Interrupts` row, the graph canvas and the `Input` card.
@@ -39,9 +40,11 @@ export function LeftPane() {
         {graph ? (
           // The expanded graph from the server is the source of nested nodes; GraphView does the collapsing
           <GraphView graph={xrayGraph ?? graph} schemas={schemas} subgraphs={subgraphs} expanded={expandedSubgraphs} />
+        ) : connection === "error" ? (
+          <ConnectionHelp error={connectionError} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-text-quaternary">
-            {connection === "error" ? `Could not connect to the server: ${connectionError}` : "Loading graph…"}
+            Loading graph…
           </div>
         )}
       </div>
