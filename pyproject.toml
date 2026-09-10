@@ -32,10 +32,12 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 path = "src/langgraph_studio_oss/__init__.py"
 
+[tool.hatch.build]
+# The frontend build is git-ignored but must ship in both the sdist and the wheel
+artifacts = ["src/langgraph_studio_oss/static/**"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/langgraph_studio_oss"]
-# The frontend build is git-ignored but must be included in the wheel
-artifacts = ["src/langgraph_studio_oss/static/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
