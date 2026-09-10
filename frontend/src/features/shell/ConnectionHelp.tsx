@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RefreshCw, Settings } from "lucide-react";
-import { currentHost } from "@/platform";
-import { apiRoot, readCustomHeaders } from "@/api/client";
+import { apiRoot, fetchConnection, readCustomHeaders, type Connection } from "@/api/client";
 import { useStudio } from "@/store/studio";
 import { ConnectionModal } from "./ConnectionModal";
 
@@ -13,8 +12,21 @@ import { ConnectionModal } from "./ConnectionModal";
 export function ConnectionHelp({ error }: { error?: string }) {
   const bootstrap = useStudio((s) => s.bootstrap);
   const [settings, setSettings] = useState(false);
-  const vscode = currentHost() === "vscode";
+  const [connection, setConnection] = useState<Connection>();
   const headers = readCustomHeaders().length;
+
+  // In proxy and VS Code modes the page itself is fine; it is the configured target that is down
+  useEffect(() => {
+    let stale = false;
+    fetchConnection()
+      .then((c) => !stale && setConnection(c))
+      .catch(() => !stale && setConnection({ mode: "mounted", target: null }));
+    return () => {
+      stale = true;
+    };
+  }, []);
+  const mode = connection?.mode ?? "mounted";
+  const address = connection?.target ?? apiRoot();
 
   return (
     <div className="absolute inset-0 flex items-center justify-center overflow-y-auto p-6">
@@ -22,7 +34,7 @@ export function ConnectionHelp({ error }: { error?: string }) {
         <div className="flex flex-col gap-1">
           <span className="text-base font-semibold tracking-tight text-text-primary">No Agent Server found</span>
           <span className="text-text-tertiary">
-            Studio could not reach <span className="font-mono text-text-secondary">{apiRoot()}</span>
+            Studio could not reach <span className="font-mono text-text-secondary">{address}</span>
             {error ? <span className="text-text-quaternary"> ({error})</span> : null}. A running LangGraph Agent Server
             is required.
           </span>
@@ -41,10 +53,16 @@ export function ConnectionHelp({ error }: { error?: string }) {
             </span>
           </li>
           <li>
-            {vscode ? (
+            {mode === "vscode" ? (
               <>
-                Point the extension at it: open <span className="font-medium">Connected</span> in the header (or the{" "}
+                Point the extension at it: open <span className="font-medium">Connection settings</span> below (or the{" "}
                 <span className="font-mono">langgraphStudio.target</span> setting) and enter the server address.
+              </>
+            ) : mode === "proxy" ? (
+              <>
+                Point the proxy at it: open <span className="font-medium">Connection settings</span> below and set{" "}
+                <span className="font-medium">Base URL</span> to the server address, or restart with{" "}
+                <span className="font-mono">--target</span>.
               </>
             ) : (
               <>
