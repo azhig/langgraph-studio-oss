@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+node_modules
+# Frontend
+frontend/node_modules/
+frontend/dist/
+src/langgraph_studio_oss/static/assets/
+src/langgraph_studio_oss/static/index.html

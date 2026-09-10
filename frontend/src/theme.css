@@ -1,0 +1,286 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/*
+ * Токены интерфейса. Значения измерены на живом Studio (docs/DESIGN-TOKENS.md):
+ * светлая тема — :root, тёмная — html.dark. Тон узлов графа от темы не зависит,
+ * поэтому он живёт в features/graph/colors.ts, а не здесь.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg-primary: #fff;
+  --bg-secondary: #f5f8fb;
+  --bg-tertiary: #edf2f7;
+  --bg-quaternary: #e2e8f0;
+  --bg-elevated: #fff;
+  --bg-elevated-hover: #fafbfd;
+  --bg-brand: #006ddd;
+  --bg-brand-hover: #1566b8;
+  --bg-brand-secondary: #e5f4ff;
+  --bg-brand-tertiary: #f2faff;
+  --bg-control-active: #0078f1;
+  --bg-success-strong: #079455;
+  --bg-error: #fef3f2;
+  --bg-error-secondary: #fee4e2;
+  --bg-error-subtle: #fee4e2;
+
+  --border-default: #cbd5e1;
+  --border-error: #fda29b;
+  --border-brand-subtle: #5fbef8;
+  --border-secondary: #e2e8f0;
+  --border-muted: #edf2f7;
+  --border-brand: #006ddd;
+  --border-outline: #e2e8f0;
+  --border-primary-button: #1566b8;
+  --border-slider-thumb: #0078f1;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary: #475569;
+  --text-quaternary: #64748b;
+  --text-disabled: #cbd5e1;
+  --text-placeholder: #94a3b8;
+  --text-brand-primary: #0d3d77;
+  --text-brand-secondary: #145095;
+  --text-brand-disabled: #9dd2fc;
+  --text-link: #0078f1;
+  --text-error-primary: #b42318;
+  --text-error-secondary: #d92d20;
+  --text-error-tertiary: #f97066;
+
+  --shadow-subtle: #1018280d;
+  --shadow-lg: 0 10px 15px -3px #1018281a, 0 4px 6px -2px #1018280f;
+
+  --minimap-bg: rgba(0, 0, 0, 0.1);
+  --minimap-mask: rgba(255, 255, 255, 0.6);
+
+  color-scheme: light;
+}
+
+html.dark {
+  --bg-primary: #09090f;
+  --bg-secondary: #111521;
+  --bg-tertiary: #1b2030;
+  --bg-quaternary: #282e42;
+  --bg-elevated: #0d0f18;
+  --bg-elevated-hover: #1b2030;
+  --bg-brand: #0078f1;
+  --bg-brand-hover: #006ddd;
+  --bg-brand-secondary: #0e2036;
+  --bg-brand-tertiary: #101a30;
+  --bg-control-active: #0078f1;
+  --bg-success-strong: #75e0a7;
+  --bg-error: #55160c;
+  --bg-error-secondary: #912018;
+  --bg-error-subtle: #912018;
+
+  --border-default: #393f55;
+  --border-error: #b42318;
+  --border-brand-subtle: #0c336a;
+  --border-secondary: #282e42;
+  --border-muted: #1b2030;
+  --border-brand: #006ddd;
+  --border-outline: #1b2030;
+  --border-primary-button: #0078f1;
+  --border-slider-thumb: #1566b8;
+
+  --text-primary: #f5f8fb;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #cbd5e1;
+  --text-quaternary: #8790ab;
+  --text-disabled: #555d78;
+  --text-placeholder: #555d78;
+  --text-brand-primary: #5fbef8;
+  --text-brand-secondary: #008dff;
+  --text-brand-disabled: #1566b8;
+  --text-link: #5fbef8;
+  --text-error-primary: #fecdca;
+  --text-error-secondary: #fda29b;
+  --text-error-tertiary: #f97066;
+
+  --shadow-subtle: #1018280d;
+  --shadow-lg: 0 10px 15px -3px #00000080, 0 4px 6px -2px #0000004d;
+
+  --minimap-bg: rgba(255, 255, 255, 0.1);
+  --minimap-mask: rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", Inter, -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-quaternary: var(--bg-quaternary);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-elevated-hover: var(--bg-elevated-hover);
+  --color-bg-brand: var(--bg-brand);
+  --color-bg-brand-hover: var(--bg-brand-hover);
+  --color-bg-brand-secondary: var(--bg-brand-secondary);
+  --color-bg-brand-tertiary: var(--bg-brand-tertiary);
+  --color-bg-control-active: var(--bg-control-active);
+  --color-bg-success-strong: var(--bg-success-strong);
+  --color-bg-error: var(--bg-error);
+  --color-bg-error-secondary: var(--bg-error-secondary);
+  --color-bg-error-subtle: var(--bg-error-subtle);
+
+  --color-border-default: var(--border-default);
+  --color-border-secondary: var(--border-secondary);
+  --color-border-muted: var(--border-muted);
+  --color-border-brand: var(--border-brand);
+  --color-border-outline: var(--border-outline);
+  --color-border-primary-button: var(--border-primary-button);
+  --color-border-slider-thumb: var(--border-slider-thumb);
+  --color-border-error: var(--border-error);
+  --color-border-brand-subtle: var(--border-brand-subtle);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-quaternary: var(--text-quaternary);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-placeholder: var(--text-placeholder);
+  --color-text-brand-primary: var(--text-brand-primary);
+  --color-text-brand-secondary: var(--text-brand-secondary);
+  --color-text-brand-disabled: var(--text-brand-disabled);
+  --color-text-link: var(--text-link);
+  --color-text-error-primary: var(--text-error-primary);
+  --color-text-error-secondary: var(--text-error-secondary);
+  --color-text-error-tertiary: var(--text-error-tertiary);
+
+  /* Шкала текста Studio: их `text-xs` — 13 px, а не 12 px, как в Tailwind по умолчанию.
+     Межбуквенные интервалы тоже измерены: 14px/-0.56px и 14px/+0.42px. */
+  --text-xxs: 12px;
+  --text-xs: 13px;
+  /* Высоты строк тоже сняты с эталона: 13px даёт 18px, 14px — 20px */
+  --text-xs--line-height: 18px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --tracking-snug: -0.02em;
+  --tracking-tighter: -0.04em;
+  --tracking-wide: 0.03em;
+
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-subtle: 0 1px 2px 0 var(--shadow-subtle);
+  --shadow-panel: var(--shadow-lg);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+}
+
+@layer components {
+/* Кнопка в стиле Studio (lc-button): компактная, 13px, межбуквенный интервал -0.26px */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: -0.26px;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.btn-sm {
+  font-size: 14px;
+  line-height: 1.15;
+  letter-spacing: -0.56px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+}
+.btn-outline {
+  background: var(--bg-elevated);
+  border-color: var(--border-outline);
+  color: var(--text-secondary);
+  box-shadow: 0 1px 2px 0 var(--shadow-subtle);
+}
+.btn-outline:hover {
+  background: var(--bg-elevated-hover);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover {
+  background: color-mix(in srgb, var(--bg-elevated-hover) 80%, transparent);
+}
+.btn-brand-outline {
+  background: transparent;
+  color: var(--text-brand-secondary);
+  border-color: var(--border-brand);
+  box-shadow: 0 1px 2px 0 var(--shadow-subtle);
+}
+.btn-brand-outline:hover {
+  background: var(--bg-brand-tertiary);
+}
+.btn-primary {
+  background: #006ddd;
+  color: #fff;
+  border-color: var(--border-primary-button);
+  box-shadow: 0 1px 2px 0 var(--shadow-subtle);
+}
+.btn-primary:hover {
+  background: var(--bg-brand);
+}
+.btn-icon {
+  padding: 4px;
+  border-radius: var(--radius-sm);
+}
+
+/* Редактор значения: рамка и фон на контейнере, сам CodeMirror прозрачный.
+   Размеры (гуттер 52 px, отступ 12 px, строка 18.2 px) заданы в CodeEditor.tsx. */
+.cm-shell {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  cursor: text;
+  overflow: hidden;
+}
+.cm-shell .cm-editor {
+  background: transparent;
+}
+
+/* Тонкий скроллбар, как в Studio */
+.scroll-thin {
+  scrollbar-width: thin;
+}
+
+/* Штриховка узла на паузе: измерено на живом Studio */
+.node-stripes {
+  mix-blend-mode: hard-light;
+  background: repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 20px);
+}
+}
