@@ -3,7 +3,7 @@
 [![CI](https://github.com/azhig/Langgraph-studio-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/azhig/Langgraph-studio-oss/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/azhig/Langgraph-studio-oss?include_prereleases)](https://github.com/azhig/Langgraph-studio-oss/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
 ![VS Code 1.95+](https://img.shields.io/badge/VS%20Code-1.95%2B-007ACC)
 
 An open-source, self-hosted Studio for [LangGraph](https://github.com/langchain-ai/langgraph)
@@ -54,7 +54,7 @@ the cloud platform, which this project does not use.
 
 ## Requirements
 
-- Python 3.11+ and a LangGraph Agent Server (`langgraph dev` from `langgraph-cli[inmem]`,
+- Python 3.9+ (Starlette 0.27+; proxy mode also needs httpx 0.23+ and uvicorn 0.20+) and a LangGraph Agent Server (`langgraph dev` from `langgraph-cli[inmem]`,
   or any server exposing the Agent Server API 0.4+).
 - For the VS Code extension: VS Code 1.95+. No Python is needed on the machine running
   VS Code, only network access to the Agent Server.

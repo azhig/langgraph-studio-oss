@@ -3,21 +3,33 @@ name = "langgraph-studio-oss"
 dynamic = ["version"]
 description = "Unofficial, community-built Studio UI for local LangGraph Agent Servers, mounted at /studio. Not affiliated with LangChain, Inc."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 license = { text = "MIT" }
 dependencies = [
-    "starlette>=0.37",
+    "starlette>=0.27",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: AsyncIO",
+    "Topic :: Software Development :: Debuggers",
 ]
 
 [project.optional-dependencies]
 # Fallback launch mode: a separate process with the UI and a reverse proxy
 proxy = [
-    "httpx>=0.28",
-    "uvicorn>=0.30",
+    "httpx>=0.23",
+    "uvicorn>=0.20",
 ]
 dev = [
     "langgraph-cli[inmem]>=0.4",
-    "httpx>=0.28",
+    "httpx>=0.23",
     "pytest>=8",
     "ruff>=0.8",
 ]
@@ -45,7 +57,7 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 110
-target-version = "py311"
+target-version = "py39"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
