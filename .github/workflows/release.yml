@@ -45,7 +45,7 @@ jobs:
 
       - name: Build the Python package (wheel and sdist)
         run: |
-          uv venv && uv pip install -e ".[dev,proxy]"
+          uv venv --clear && uv pip install -e ".[dev,proxy]"
           .venv/bin/pytest
           uv build
 
