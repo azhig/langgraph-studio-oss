@@ -54,7 +54,7 @@ the cloud platform, which this project does not use.
 
 ## Requirements
 
-- Python 3.9+ (Starlette 0.27+; proxy mode also needs httpx 0.23+ and uvicorn 0.20+) and a LangGraph Agent Server (`langgraph dev` from `langgraph-cli[inmem]`,
+- Python 3.9+ and a LangGraph Agent Server (`langgraph dev` from `langgraph-cli[inmem]`,
   or any server exposing the Agent Server API 0.4+).
 - For the VS Code extension: VS Code 1.95+. No Python is needed on the machine running
   VS Code, only network access to the Agent Server.
@@ -98,12 +98,11 @@ mount_studio(app, path="/lg-studio")   # or at another path
 
 ### Mode 2: standalone proxy
 
-When `langgraph.json` cannot be changed, run the UI as its own process. It serves the
+When `langgraph.json` cannot be changed, run the UI as its own process (included in the package, no extras needed). It serves the
 page and forwards every other request to the Agent Server, so the browser still sees a
 single origin.
 
 ```bash
-pip install "langgraph_studio_oss[proxy] @ https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.0-py3-none-any.whl"
 langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
 # → http://127.0.0.1:8100/studio
 ```
@@ -180,7 +179,7 @@ A `Makefile` wraps the common commands: `make setup`, `make build`, `make check`
 The underlying commands:
 
 ```bash
-uv venv && uv pip install -e ".[dev,proxy]"
+uv venv && uv pip install -e ".[dev]"
 pytest                      # server side
 ruff check src tests
 

@@ -7,6 +7,8 @@ requires-python = ">=3.9"
 license = { text = "MIT" }
 dependencies = [
     "starlette>=0.27",
+    "httpx>=0.23",
+    "uvicorn>=0.20",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -22,14 +24,8 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-# Fallback launch mode: a separate process with the UI and a reverse proxy
-proxy = [
-    "httpx>=0.23",
-    "uvicorn>=0.20",
-]
 dev = [
     "langgraph-cli[inmem]>=0.4",
-    "httpx>=0.23",
     "pytest>=8",
     "ruff>=0.8",
 ]

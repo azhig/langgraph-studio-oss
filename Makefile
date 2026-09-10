@@ -20,9 +20,9 @@ help: ## Show this help
 
 setup: setup-py setup-front setup-ext ## Install everything (Python venv, frontend, extension)
 
-setup-py: ## Create .venv and install the package with dev + proxy extras
+setup-py: ## Create .venv and install the package with dev extras
 	test -d $(VENV) || uv venv $(VENV)
-	uv pip install --python $(PY) -e ".[dev,proxy]"
+	uv pip install --python $(PY) -e ".[dev]"
 
 setup-front: ## Install frontend dependencies
 	cd $(FRONT) && pnpm install

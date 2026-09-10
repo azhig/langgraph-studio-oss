@@ -11,7 +11,6 @@ this command is for when that file cannot be edited.
 from __future__ import annotations
 
 import argparse
-import sys
 
 from langgraph_studio_oss.app import DEFAULT_PATH
 from langgraph_studio_oss.proxy import DEFAULT_TARGET, read_saved_target, state_path, write_saved_target
@@ -38,14 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    try:
-        import uvicorn
-    except ImportError:  # pragma: no cover - depends on the environment
-        print(
-            "This mode requires uvicorn: pip install 'langgraph-studio-oss[proxy]'",
-            file=sys.stderr,
-        )
-        return 1
+    import uvicorn
 
     from langgraph_studio_oss.proxy import create_app
 
