@@ -1,5 +1,11 @@
 # LangGraph Studio (Unofficial)
 
+[![CI](https://github.com/azhig/Langgraph-studio-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/azhig/Langgraph-studio-oss/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/azhig/Langgraph-studio-oss?include_prereleases)](https://github.com/azhig/Langgraph-studio-oss/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+![VS Code 1.95+](https://img.shields.io/badge/VS%20Code-1.95%2B-007ACC)
+
 An open-source, self-hosted Studio for [LangGraph](https://github.com/langchain-ai/langgraph)
 Agent Servers. It gives you the graph view, thread log, interrupts, assistants, memory and
 chat mode of the hosted Studio, but runs entirely against your own server: no cloud,
@@ -55,8 +61,11 @@ the cloud platform, which this project does not use.
 
 ## Python package
 
+The package is not on PyPI yet. Install the wheel from the
+[latest release](https://github.com/azhig/Langgraph-studio-oss/releases):
+
 ```bash
-pip install langgraph-studio-oss
+pip install https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.0-py3-none-any.whl
 ```
 
 ### Mode 1: mounted into `langgraph dev` (recommended)
@@ -94,7 +103,7 @@ page and forwards every other request to the Agent Server, so the browser still 
 single origin.
 
 ```bash
-pip install "langgraph-studio-oss[proxy]"
+pip install "langgraph_studio_oss[proxy] @ https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.0-py3-none-any.whl"
 langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
 # → http://127.0.0.1:8100/studio
 ```
@@ -141,7 +150,8 @@ The same UI opens as a panel inside VS Code. The extension host makes the HTTP r
 to the Agent Server, so the webview needs no network access and nothing has to be
 installed in Python.
 
-Install the `.vsix` (or build it, see below), then run **LangGraph Studio (Unofficial): Open**
+Download the `.vsix` from the [latest release](https://github.com/azhig/Langgraph-studio-oss/releases)
+(or build it, see below), install it with `code --install-extension <file>.vsix`, then run **LangGraph Studio (Unofficial): Open**
 from the Command Palette.
 
 | Setting | Default | Meaning |
