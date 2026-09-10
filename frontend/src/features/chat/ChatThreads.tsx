@@ -1,42 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Thread } from "@langchain/langgraph-sdk";
 import { Info, Plus, X } from "lucide-react";
-import { getClient } from "@/api/client";
+import { cx } from "@/lib/cx";
+import { messagePlainText, type MessageLike } from "@/lib/messages";
 import { useStudioStream } from "@/features/run/StreamProvider";
+import { usePagedThreads } from "@/hooks/usePagedThreads";
 
 const PAGE = 40;
 
 /**
- * Панель тредов справа от чата: ширина 250 px, заголовок `Threads` с кнопкой `New`
- * и крестиком. Строка треда подписана первым сообщением человека — так эталон
- * называет разговоры.
+ * Threads panel to the right of the chat: 250 px wide, `Threads` heading with a `New` button
+ * and a close cross. A thread row is labeled with its first message — that is how the reference
+ * names conversations.
  */
 export function ChatThreads({ onClose }: { onClose: () => void }) {
   const { threadId, openThread, newThread, isLoading } = useStudioStream();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [done, setDone] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { threads, loading, done, reload, loadMore } = usePagedThreads(PAGE);
 
-  const load = useCallback(async (offset: number) => {
-    setLoading(true);
-    try {
-      const page = await getClient().threads.search({ limit: PAGE, offset });
-      setThreads((prev) => (offset ? [...prev, ...page] : page));
-      setDone(page.length < PAGE);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Перечитываем после прогона: подпись треда берётся из его значений
+  // Re-read after a run: the thread label is taken from its values
   useEffect(() => {
-    if (!isLoading) void load(0);
-  }, [load, threadId, isLoading]);
+    if (!isLoading) void reload();
+  }, [reload, threadId, isLoading]);
 
   return (
     <div className="flex h-full w-[250px] shrink-0 flex-col gap-3 bg-bg-primary p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold leading-tight tracking-snug">Threads</span>
+        <span className="text-xs leading-tight font-semibold tracking-snug">Threads</span>
         <span className="flex items-center gap-1">
           <button type="button" className="btn btn-outline !px-2" disabled={!threadId} onClick={newThread}>
             <Plus size={14} strokeWidth={1.8} />
@@ -57,9 +46,10 @@ export function ChatThreads({ onClose }: { onClose: () => void }) {
           <button
             key={thread.thread_id}
             type="button"
-            className={`flex w-full items-center justify-between gap-1 rounded-md border border-transparent px-2 py-2 text-left transition-colors hover:bg-bg-brand-secondary ${
-              thread.thread_id === threadId ? "bg-bg-brand-secondary" : ""
-            }`}
+            className={cx(
+              "flex w-full items-center justify-between gap-1 rounded-md border border-transparent px-2 py-2 text-left transition-colors hover:bg-bg-brand-secondary",
+              thread.thread_id === threadId && "bg-bg-brand-secondary",
+            )}
             onClick={() => openThread(thread.thread_id)}
           >
             <span className="line-clamp-1 truncate text-xs font-medium tracking-tighter text-text-secondary">
@@ -73,7 +63,7 @@ export function ChatThreads({ onClose }: { onClose: () => void }) {
             type="button"
             className="btn btn-outline mx-auto mt-1"
             disabled={loading}
-            onClick={() => void load(threads.length)}
+            onClick={() => void loadMore()}
           >
             Load more
           </button>
@@ -83,19 +73,10 @@ export function ChatThreads({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Подпись треда: текст первого сообщения — эталон берёт его независимо от роли. */
+/** Thread label: the text of the first message — the reference takes it regardless of role. */
 function titleOf(thread: Thread): string {
-  const messages = (thread.values as { messages?: Array<{ type?: string; role?: string; content?: unknown }> } | null)
-    ?.messages;
-  const content = messages?.[0]?.content;
-  if (typeof content === "string" && content.trim()) return content;
-  if (Array.isArray(content)) {
-    const text = content
-      .map((part) => (typeof part === "string" ? part : ((part as { text?: string })?.text ?? "")))
-      .join("")
-      .trim();
-    if (text) return text;
-  }
-  // Тред без сообщений эталон подписывает так же, как кнопку создания
-  return "New Thread";
+  const messages = (thread.values as { messages?: MessageLike[] } | null)?.messages;
+  const text = messagePlainText(messages?.[0]?.content).trim();
+  // The reference labels a thread without messages the same as the create button
+  return text || "New Thread";
 }

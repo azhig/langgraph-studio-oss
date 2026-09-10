@@ -1,14 +1,15 @@
-import { Check } from "lucide-react";
+import { cx } from "@/lib/cx";
 import { useRun } from "@/store/run";
-import { useStudio } from "@/store/studio";
+import { useStudio, type Theme } from "@/store/studio";
+import { Checkbox } from "@/components/Checkbox";
+import { CollapseGlyph, ExpandGlyph, SubgraphGlyph } from "@/components/icons/SubgraphGlyphs";
 import { isSystemNode, nodePalette } from "./colors";
-import { CollapseGlyph, ExpandGlyph, SubgraphGlyph } from "./SubgraphFrame";
 
 /**
- * Карточка узла по наведению. Снято с эталона: имя узла чипом, ниже сетка
- * `Source` / `Target` с чипами соседей, внизу через разделитель — флажки
- * `Interrupt Before` и `Interrupt After`. У узла-подграфа вместо соседей —
- * пункт `Show subgraph nodes` (в раскрытом виде — `Hide subgraph nodes`).
+ * Node hover card. Captured from the reference: the node name as a chip, below it a
+ * `Source` / `Target` grid with neighbor chips, at the bottom after a divider the
+ * `Interrupt Before` and `Interrupt After` checkboxes. For a subgraph node, instead of neighbors,
+ * a `Show subgraph nodes` item (`Hide subgraph nodes` when expanded).
  */
 export function NodeHoverCard({
   node,
@@ -19,19 +20,21 @@ export function NodeHoverCard({
   nested = false,
 }: {
   node: string;
-  /** Видимое имя: у вложенного узла — без префикса подграфа. */
+  /** Visible name: for a nested node, without the subgraph prefix. */
   label?: string;
   sources: string[];
   targets: string[];
   subgraph?: boolean;
-  /** Узел внутри подграфа: паузу на нём поставить нельзя, флажков нет. */
+  /** Node inside a subgraph: a pause cannot be set on it, no checkboxes. */
   nested?: boolean;
 }) {
   const theme = useStudio((s) => s.theme);
   const expanded = useStudio((s) => s.expandedSubgraphs.includes(node));
   const toggleSubgraph = useStudio((s) => s.toggleSubgraph);
-  const { interruptBefore, interruptAfter, toggleInterrupt } = useRun();
-  // У служебных узлов эталон показывает только связи, без флажков прерываний
+  const before = useRun((s) => s.interruptBefore.includes(node));
+  const after = useRun((s) => s.interruptAfter.includes(node));
+  const toggleInterrupt = useRun((s) => s.toggleInterrupt);
+  // For system nodes the reference shows only connections, without interrupt checkboxes
   const system = isSystemNode(node);
 
   return (
@@ -39,8 +42,8 @@ export function NodeHoverCard({
       <div className="my-4 ml-3">
         <Chip name={label ?? node} theme={theme} size="sm" icon={subgraph} />
       </div>
-      {/* Связи показываются у всех узлов, включая подграфы; у служебных — только
-          та сторона, которая есть */}
+      {/* Connections are shown for all nodes, including subgraphs; for system nodes only
+          the side that exists */}
       <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
         {sources.length > 0 && (
           <>
@@ -68,15 +71,17 @@ export function NodeHoverCard({
         </div>
       )}
       {!nested && !system && (
-        <div className="-mb-2 mt-3 flex items-center gap-2 border-t border-border-secondary px-3 pt-1">
-          <Flag
+        <div className="mt-3 -mb-2 flex items-center gap-2 border-t border-border-secondary px-3 pt-1">
+          <Checkbox
             label="Interrupt Before"
-            checked={interruptBefore.includes(node)}
+            className="gap-2"
+            checked={before}
             onToggle={() => toggleInterrupt(node, "before")}
           />
-          <Flag
+          <Checkbox
             label="Interrupt After"
-            checked={interruptAfter.includes(node)}
+            className="gap-2"
+            checked={after}
             onToggle={() => toggleInterrupt(node, "after")}
           />
         </div>
@@ -85,7 +90,7 @@ export function NodeHoverCard({
   );
 }
 
-function Chips({ names, theme }: { names: string[]; theme: "dark" | "light" }) {
+function Chips({ names, theme }: { names: string[]; theme: Theme }) {
   if (!names.length) return <span className="pr-3 text-text-quaternary">—</span>;
   return (
     <div className="scroll-thin flex items-center gap-2 overflow-x-auto">
@@ -97,7 +102,7 @@ function Chips({ names, theme }: { names: string[]; theme: "dark" | "light" }) {
   );
 }
 
-/** Чип узла: цвета из его тона, служебные — со скруглением в кольцо. */
+/** Node chip: colors from its tone; system nodes are rounded into a pill. */
 function Chip({
   name,
   theme,
@@ -105,23 +110,20 @@ function Chip({
   icon = false,
 }: {
   name: string;
-  theme: "dark" | "light";
+  theme: Theme;
   size: "sm" | "xs";
-  /** У подграфа перед именем стоит его значок. */
+  /** A subgraph has its icon before the name. */
   icon?: boolean;
 }) {
   const palette = nodePalette(name, theme);
-  const [h, s, l] = palette.tone;
   return (
     <span
-      className={`shrink-0 whitespace-nowrap border px-2 py-1 font-medium ${
-        isSystemNode(name) ? "rounded-full" : "rounded-md"
-      } ${size === "sm" ? "text-sm" : "text-xs"}`}
-      style={{
-        color: palette.text,
-        backgroundColor: `hsla(${h}, ${s}%, ${l}%, 0.15)`,
-        borderColor: palette.border,
-      }}
+      className={cx(
+        "shrink-0 border px-2 py-1 font-medium whitespace-nowrap",
+        isSystemNode(name) ? "rounded-full" : "rounded-md",
+        size === "sm" ? "text-sm" : "text-xs",
+      )}
+      style={{ color: palette.text, backgroundColor: palette.chipBackground, borderColor: palette.border }}
     >
       {icon ? (
         <span className="-my-1 inline-flex items-center gap-1">
@@ -132,24 +134,5 @@ function Chip({
         name
       )}
     </span>
-  );
-}
-
-function Flag({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex shrink-0 cursor-pointer items-center gap-2 py-2 text-xs text-text-tertiary"
-      onClick={onToggle}
-    >
-      <span
-        className={`flex size-4 items-center justify-center rounded-[4px] border ${
-          checked ? "border-bg-brand bg-bg-brand-tertiary text-text-brand-secondary" : "border-border-secondary"
-        }`}
-      >
-        {checked && <Check size={12} strokeWidth={2.4} />}
-      </span>
-      <span>{label}</span>
-    </button>
   );
 }

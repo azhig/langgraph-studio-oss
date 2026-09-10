@@ -1,74 +1,55 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { Thread } from "@langchain/langgraph-sdk";
 import { ChevronDown, Copy, CircleAlert, LoaderCircle, MessageSquare, Pause } from "lucide-react";
+import { copyText } from "@/lib/clipboard";
+import { relativeTime } from "@/lib/time";
 import { getClient } from "@/api/client";
-import { useStudio } from "@/store/studio";
+import { useCurrentAssistant } from "@/store/studio";
 import { useStudioStream } from "@/features/run/StreamProvider";
+import { usePagedThreads } from "@/hooks/usePagedThreads";
 import { Popover } from "@/components/Popover";
 import { Tooltip } from "@/components/Tooltip";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { relativeTime } from "./time";
 
 const PAGE = 20;
 
 /**
- * Выбор треда: кнопка `Thread <id> ▾` и список последних тредов текущего графа.
- * Ширина панели, строка с аватаром состояния, копирование идентификатора и
- * `Load more` повторяют эталон.
+ * Thread picker: a `Thread <id> ▾` button and the list of recent threads for the current graph.
+ * Panel width, the status-avatar row, id copying and
+ * `Load more` match the reference.
  */
 export function ThreadPicker() {
   const { threadId, openThread } = useStudioStream();
-  const assistants = useStudio((s) => s.assistants);
-  const assistantId = useStudio((s) => s.assistantId);
-  const graphId = assistants.find((a) => a.assistant_id === assistantId)?.graph_id;
-
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const load = useCallback(
-    async (offset: number) => {
-      if (!graphId) return;
-      setLoading(true);
-      try {
-        const page = await getClient().threads.search({
-          limit: PAGE,
-          offset,
-          metadata: { graph_id: graphId },
-        });
-        setThreads((prev) => (offset ? [...prev, ...page] : page));
-        setDone(page.length < PAGE);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [graphId],
-  );
+  const graphId = useCurrentAssistant()?.graph_id;
+  const { threads, loading, done, reload, loadMore } = usePagedThreads(PAGE, {
+    metadata: graphId ? { graph_id: graphId } : undefined,
+    enabled: Boolean(graphId),
+  });
 
   return (
     <Popover
       width={288}
       trigger={({ toggle }) => (
         <Tooltip label={threadId ? `Thread: ${threadId}` : "New Thread"}>
-        <button
-          type="button"
-          data-testid="graph-thread-select-trigger"
-          className="btn btn-ghost min-w-0 !px-2 !py-1 text-text-secondary"
-          onClick={() => {
-            toggle();
-            void load(0);
-          }}
-        >
-          {threadId ? (
-            <>
-              <span className="shrink-0 font-medium">Thread</span>
-              <span className="min-w-0 truncate">{threadId}</span>
-            </>
-          ) : (
-            <span className="font-medium">New Thread</span>
-          )}
-          <ChevronDown size={16} strokeWidth={1.5} className="shrink-0" />
-        </button>
+          <button
+            type="button"
+            data-testid="graph-thread-select-trigger"
+            className="btn btn-ghost min-w-0 !px-2 !py-1 text-text-secondary"
+            onClick={() => {
+              toggle();
+              void reload();
+            }}
+          >
+            {threadId ? (
+              <>
+                <span className="shrink-0 font-medium">Thread</span>
+                <span className="min-w-0 truncate">{threadId}</span>
+              </>
+            ) : (
+              <span className="font-medium">New Thread</span>
+            )}
+            <ChevronDown size={16} strokeWidth={1.5} className="shrink-0" />
+          </button>
         </Tooltip>
       )}
     >
@@ -78,16 +59,13 @@ export function ThreadPicker() {
             <ThreadRow
               key={t.thread_id}
               thread={t}
-              active={t.thread_id === threadId}
               onOpen={() => {
                 openThread(t.thread_id);
                 close();
               }}
             />
           ))}
-          {!threads.length && !loading && (
-            <div className="py-2 text-sm text-text-tertiary">No threads yet</div>
-          )}
+          {!threads.length && !loading && <div className="py-2 text-sm text-text-tertiary">No threads yet</div>}
           {loading && (
             <div className="flex items-center gap-2 py-2 text-sm text-text-tertiary">
               <LoaderCircle size={16} className="animate-spin" />
@@ -95,11 +73,7 @@ export function ThreadPicker() {
             </div>
           )}
           {!done && !loading && threads.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-ghost mt-2 self-start !px-2"
-              onClick={() => void load(threads.length)}
-            >
+            <button type="button" className="btn btn-ghost mt-2 self-start !px-2" onClick={() => void loadMore()}>
               Load more
             </button>
           )}
@@ -117,9 +91,9 @@ export function ThreadPicker() {
 }
 
 /**
- * `Cancel all pending runs`: снимает незавершённые прогоны во всех тредах графа.
- * Сервер не умеет отменять их одним запросом, поэтому обходим занятые треды
- * и отменяем их прогоны по одному — результат тот же, что у эталона.
+ * `Cancel all pending runs`: cancels unfinished runs across all threads of the graph.
+ * The server cannot cancel them in one request, so we walk the busy threads
+ * and cancel their runs one by one — same outcome as the reference.
  */
 function CancelAllRuns() {
   const [open, setOpen] = useState(false);
@@ -170,16 +144,15 @@ function CancelAllRuns() {
   );
 }
 
-function ThreadRow({ thread, active, onOpen }: { thread: Thread; active: boolean; onOpen: () => void }) {
-  const status = thread.status ?? "idle";
+function ThreadRow({ thread, onOpen }: { thread: Thread; onOpen: () => void }) {
   return (
     <div className="group grid grid-cols-[1fr_auto] py-0">
       <button
         type="button"
-        className={`grid grid-cols-[auto_1fr] items-center gap-3 pb-3 pt-2 text-left ${active ? "opacity-100" : ""}`}
+        className="grid grid-cols-[auto_1fr] items-center gap-3 pt-2 pb-3 text-left"
         onClick={onOpen}
       >
-        <StatusAvatar status={status} />
+        <StatusAvatar status={thread.status ?? "idle"} />
         <span className="flex min-w-0 flex-col text-left">
           <span className="grid grid-cols-[1fr_auto] items-center gap-1">
             <span className="truncate text-sm">{thread.thread_id}</span>
@@ -190,7 +163,7 @@ function ThreadRow({ thread, active, onOpen }: { thread: Thread; active: boolean
               className="btn btn-ghost btn-icon !p-1 text-text-secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                void navigator.clipboard?.writeText(thread.thread_id);
+                copyText(thread.thread_id);
               }}
               onKeyDown={(e) => e.stopPropagation()}
             >
@@ -208,15 +181,16 @@ function ThreadRow({ thread, active, onOpen }: { thread: Thread; active: boolean
   );
 }
 
-/** Кружок 32 px слева от идентификатора: цвет и иконка отражают состояние треда. */
+const STATUS_LOOK: Record<string, { cls: string; icon: typeof MessageSquare }> = {
+  idle: { cls: "bg-bg-tertiary text-text-secondary", icon: MessageSquare },
+  busy: { cls: "bg-bg-brand-tertiary text-text-brand-secondary", icon: LoaderCircle },
+  interrupted: { cls: "bg-bg-tertiary text-text-tertiary", icon: Pause },
+  error: { cls: "bg-bg-error-secondary text-text-error-secondary", icon: CircleAlert },
+};
+
+/** 32 px circle left of the id: color and icon reflect the thread status. */
 function StatusAvatar({ status }: { status: string }) {
-  const look: Record<string, { cls: string; icon: typeof MessageSquare }> = {
-    idle: { cls: "bg-bg-tertiary text-text-secondary", icon: MessageSquare },
-    busy: { cls: "bg-bg-brand-tertiary text-text-brand-secondary", icon: LoaderCircle },
-    interrupted: { cls: "bg-bg-tertiary text-text-tertiary", icon: Pause },
-    error: { cls: "bg-bg-error-secondary text-text-error-secondary", icon: CircleAlert },
-  };
-  const { cls, icon: Icon } = look[status] ?? look.idle;
+  const { cls, icon: Icon } = STATUS_LOOK[status] ?? STATUS_LOOK.idle;
   return (
     <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${cls}`}>
       <Icon size={20} strokeWidth={1.5} className={status === "busy" ? "animate-spin" : undefined} />

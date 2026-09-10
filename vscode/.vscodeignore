@@ -1,0 +1,7 @@
+src/**
+out/**/*.map
+node_modules/**
+tsconfig.json
+vitest.config.mts
+.gitignore
+scripts/**

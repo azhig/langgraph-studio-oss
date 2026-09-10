@@ -1,0 +1,13 @@
+/*
+ * Styles entry point. Order matters: Tailwind, the font, then our layers —
+ * tokens (values measured on the live Studio, docs/DESIGN-TOKENS.md),
+ * the Tailwind theme on top of the tokens, base rules and components.
+ */
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "./tokens.css";
+@import "./theme.css";
+@import "./base.css";
+@import "./components.css";
+
+@custom-variant dark (&:where(.dark, .dark *));

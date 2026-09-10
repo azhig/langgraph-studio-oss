@@ -3,22 +3,15 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 interface Props {
   left: ReactNode;
   right: ReactNode;
-  /** Доля левой панели по умолчанию (в Studio — ровно половина). */
+  /** Default share of the left pane (exactly half in Studio). */
   defaultRatio?: number;
   minRatio?: number;
   maxRatio?: number;
   storageKey?: string;
 }
 
-/** Две панели с перетаскиваемым разделителем, как в Studio. Разделитель невидим, подсвечивается при захвате. */
-export function SplitPane({
-  left,
-  right,
-  defaultRatio = 0.5,
-  minRatio = 0.25,
-  maxRatio = 0.75,
-  storageKey,
-}: Props) {
+/** Two panes with a draggable divider, as in Studio. The divider is invisible and highlighted while dragged. */
+export function SplitPane({ left, right, defaultRatio = 0.5, minRatio = 0.25, maxRatio = 0.75, storageKey }: Props) {
   const [ratio, setRatio] = useState(() => {
     if (!storageKey) return defaultRatio;
     try {
@@ -52,7 +45,7 @@ export function SplitPane({
         try {
           localStorage.setItem(storageKey, String(ratio));
         } catch {
-          /* без запоминания */
+          /* no persistence */
         }
       }
     };

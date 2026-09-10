@@ -1,18 +1,19 @@
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { Modal } from "@/components/Modal";
-import { useStudio } from "@/store/studio";
-import { nodePalette } from "@/features/graph/colors";
+import { useCurrentAssistant, useStudio } from "@/store/studio";
+import { NodeAvatar } from "@/features/graph/NodeAvatar";
 import { configFields } from "./config";
 import { ConfigInput } from "./ConfigInput";
+import { isSystemAssistant } from "./model";
 
 /**
- * Настройки одного узла: те же поля конфигурации, но отобранные по
- * `langgraph_nodes`. Размеры сняты с эталона — полотно 896 px (`w-[56rem]`),
- * высота по содержимому (не больше 90 % экрана), шапка с аватаром узла.
+ * Settings of a single node: the same config fields, filtered by
+ * `langgraph_nodes`. Sizes are taken from the reference — 896 px canvas (`w-[56rem]`),
+ * height fits the content (at most 90% of the screen), header with the node avatar.
  *
- * `Save` у собственного ассистента создаёт новую версию, у `Default Configuration`
- * значения просто уходят в конфигурацию ближайших запусков.
+ * `Save` on a user's own assistant creates a new version; for `Default Configuration`
+ * the values simply go into the config of upcoming runs.
  */
 export function NodeConfigModal({
   node,
@@ -25,13 +26,14 @@ export function NodeConfigModal({
   onClose: () => void;
   onOpenAssistants: () => void;
 }) {
-  const { assistants, assistantId, schemas, config, setConfig, saveAssistant, theme } = useStudio();
-  const assistant = assistants.find((a) => a.assistant_id === assistantId);
-  const system = (assistant?.metadata as { created_by?: string } | undefined)?.created_by === "system";
+  const schemas = useStudio((s) => s.schemas);
+  const config = useStudio((s) => s.config);
+  const setConfig = useStudio((s) => s.setConfig);
+  const saveAssistant = useStudio((s) => s.saveAssistant);
+  const assistant = useCurrentAssistant();
+  const system = isSystemAssistant(assistant);
   const fields = useMemo(() => configFields(schemas).filter((f) => f.nodes.includes(node)), [schemas, node]);
   const [values, setValues] = useState<Record<string, unknown>>(config);
-  const palette = nodePalette(node, theme);
-  const [h, s, l] = palette.tone;
 
   const save = async () => {
     const next = { ...config, ...values };
@@ -45,23 +47,14 @@ export function NodeConfigModal({
       <div className="m-0 min-h-14 shrink-0 p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
-            <h3 className="text-base font-semibold leading-tight tracking-tight">
+            <h3 className="text-base leading-tight font-semibold tracking-tight">
               <span className="inline-flex items-center gap-2">
-                <span
-                  className="flex size-5 items-center justify-center rounded-full border text-center text-[10px] font-semibold uppercase"
-                  style={{
-                    color: palette.text,
-                    backgroundColor: `hsla(${h}, ${s}%, ${l}%, 0.2)`,
-                    borderColor: palette.border,
-                  }}
-                >
-                  {node.slice(0, 1)}
-                </span>
+                <NodeAvatar node={node} />
                 {node} Configuration
               </span>
             </h3>
             <span className="text-xs leading-tight tracking-snug text-text-quaternary">
-              Edit assistant settings specific to this node and save to create a new assistant version.
+              Settings that apply to this node only; saving creates a new version of the assistant.
             </span>
           </div>
           <button

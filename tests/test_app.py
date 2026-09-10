@@ -1,4 +1,4 @@
-"""Проверки маршрутов интерфейса: страница, статика и редиректы."""
+"""Tests for the UI routes: the page, static assets and redirects."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def test_index_served_at_studio_root() -> None:
     response = client.get("/studio/")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    # Свежая сборка после hot reload не должна кэшироваться
+    # A fresh build after hot reload must not be cached
     assert response.headers["cache-control"] == "no-store"
 
 
@@ -34,6 +34,11 @@ def test_nested_path_returns_to_root() -> None:
     assert response.headers["location"] == "/studio/"
 
 
+def test_connection_info_in_mounted_mode() -> None:
+    client = TestClient(app)
+    assert client.get("/studio/api/connection").json() == {"mode": "mounted", "target": None}
+
+
 def test_mount_studio_keeps_existing_routes() -> None:
     host = Starlette(routes=[Route("/health", lambda request: PlainTextResponse("ok"))])
     mount_studio(host)
@@ -48,8 +53,8 @@ def test_mount_studio_refuses_busy_path() -> None:
         mount_studio(host)
     except ValueError as error:
         assert "/studio" in str(error)
-    else:  # pragma: no cover - ошибка обязана возникнуть
-        raise AssertionError("занятый путь должен приводить к ValueError")
+    else:  # pragma: no cover - the error must be raised
+        raise AssertionError("a taken path must raise ValueError")
 
 
 def test_custom_path() -> None:

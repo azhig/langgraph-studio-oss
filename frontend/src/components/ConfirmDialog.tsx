@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { Modal } from "./Modal";
 
 /**
- * Подтверждение опасного действия: заголовок, пояснение и две кнопки.
- * Эталон открывает такое окно, например, перед `Cancel all pending runs`.
+ * Confirmation of a dangerous action: title, explanation and two buttons.
+ * The reference opens such a dialog, for example, before `Cancel all pending runs`.
  */
 export function ConfirmDialog({
   open,
@@ -26,7 +26,7 @@ export function ConfirmDialog({
     <Modal open={open} onClose={onClose} width={480} autoHeight>
       <div className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-base font-semibold leading-tight tracking-tight">{title}</h3>
+          <h3 className="text-base leading-tight font-semibold tracking-tight">{title}</h3>
           <span className="text-sm text-text-tertiary">{description}</span>
         </div>
         <div className="flex items-center justify-end gap-2">

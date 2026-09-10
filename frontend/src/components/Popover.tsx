@@ -1,30 +1,48 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { cx } from "@/lib/cx";
+import { useAnchoredPosition, type Placer } from "@/hooks/useAnchoredPosition";
+import { useEscapeKey, useOutsideClick } from "@/hooks/useDismiss";
 
-/**
- * Всплывающая панель. Рисуется порталом в `body`: панели шапки и лога лежат в
- * контейнерах с `overflow: hidden`, и вложенный `absolute` там обрезается.
- * Закрывается по клику вне и по Escape; положение считается от триггера.
- */
+type Align = "start" | "end" | "screen-end";
+
 interface Props {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
   children: (props: { close: () => void }) => ReactNode;
-  /** Ширина панели; в эталоне списки и состояние — 288 px (`w-72`).
-      Без неё панель растягивается по содержимому (так устроено меню `Interrupts`). */
+  /** Panel width; in the reference lists and state are 288 px (`w-72`).
+      Without it the panel sizes to its content (this is how the `Interrupts` menu works). */
   width?: number;
-  /** Наименьшая ширина панели без заданной `width`: у меню эталона это 160 px. */
+  /** Minimum panel width when `width` is not set: 160 px for the reference's menus. */
   minWidth?: number;
-  /** `screen-end` прижимает панель к правому краю окна — так открыт `View state`. */
-  align?: "start" | "end" | "screen-end";
-  /** Ограничение высоты панели; у `View state` эталон держит половину экрана. */
+  /** `screen-end` pins the panel to the window's right edge — this is how `View state` opens. */
+  align?: Align;
+  /** Panel height limit; for `View state` the reference keeps half the screen. */
   maxHeight?: string;
-  /** Раскрывать вверх — для элементов у нижней кромки окна. */
+  /** Open upward — for elements near the bottom edge of the window. */
   up?: boolean;
-  /** Панель сама прокручивает содержимое. Выключается там, где прокрутка внутри
-      (`View state`): иначе вместе с телом уезжают шапка и вкладки. */
+  /** The panel scrolls its own content. Disabled where scrolling happens inside:
+      otherwise the header and tabs scroll away with the body. */
   scrollable?: boolean;
 }
 
+/** Below the trigger with a 3 px gap (4 px above it); horizontally from its left or right edge. */
+function placer(align: Align, up: boolean, width?: number): Placer {
+  return (r, p) => {
+    // Without a set width the panel is measured as rendered: it is already in the DOM, just hidden
+    const w = width ?? p.width;
+    const left = align === "screen-end" ? window.innerWidth - w : align === "end" ? r.right - w : r.left;
+    return {
+      top: up ? r.top - 4 : r.bottom + 3,
+      left: align === "screen-end" ? Math.max(0, left) : Math.max(8, Math.min(left, window.innerWidth - w - 8)),
+    };
+  };
+}
+
+/**
+ * Popover panel. Rendered via a portal into `body`: the header and log panels live in
+ * containers with `overflow: hidden`, where a nested `absolute` gets clipped.
+ * Closes on outside click and Escape; the position is computed from the trigger.
+ */
 export function Popover({
   trigger,
   children,
@@ -36,52 +54,14 @@ export function Popover({
   scrollable = true,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const anchor = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const place = useMemo(() => placer(align, up, width), [align, up, width]);
+  const pos = useAnchoredPosition(open, anchor, panel, place);
+  const close = useCallback(() => setOpen(false), []);
 
-  useLayoutEffect(() => {
-    if (!open || !anchor.current) return;
-    const place = () => {
-      const r = anchor.current?.getBoundingClientRect();
-      if (!r) return;
-      // Без заданной ширины панель меряется по факту: она уже в DOM, просто спрятана
-      const w = width ?? panel.current?.offsetWidth ?? 0;
-      const left = align === "screen-end" ? window.innerWidth - w : align === "end" ? r.right - w : r.left;
-      const top = up ? r.top - 4 : r.bottom + 3;
-      setPos({
-        top,
-        left:
-          align === "screen-end"
-            ? Math.max(0, left)
-            : Math.max(8, Math.min(left, window.innerWidth - w - 8)),
-      });
-    };
-    place();
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
-  }, [open, align, width, up]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!anchor.current?.contains(t) && !panel.current?.contains(t)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  useEscapeKey(open, close);
+  useOutsideClick(open, [anchor, panel], close);
 
   return (
     <div className="relative flex" ref={anchor}>
@@ -90,21 +70,22 @@ export function Popover({
         createPortal(
           <div
             ref={panel}
-            className={`fixed z-[1300] rounded-md border border-border-secondary bg-bg-elevated shadow-[var(--shadow-lg)] ${
-              scrollable ? "scroll-thin overflow-y-auto" : "flex flex-col overflow-hidden"
-            }`}
+            className={cx(
+              "fixed z-[1300] rounded-md border border-border-secondary bg-bg-elevated shadow-[var(--shadow-lg)]",
+              scrollable ? "scroll-thin overflow-y-auto" : "flex flex-col overflow-hidden",
+            )}
             style={{
               top: pos?.top ?? 0,
               left: pos?.left ?? 0,
               width,
               minWidth,
               maxHeight,
-              // До первого замера панель уже в DOM, но не показана: иначе её нечем мерить
+              // Before the first measurement the panel is in the DOM but not shown: otherwise there is nothing to measure
               visibility: pos ? undefined : "hidden",
               transform: up ? "translateY(-100%)" : undefined,
             }}
           >
-            {children({ close: () => setOpen(false) })}
+            {children({ close })}
           </div>,
           document.body,
         )}

@@ -11,8 +11,8 @@ interface Props<T extends string> {
 }
 
 /**
- * Переключатель вида `Graph│Chat`, `Interact│Trace`: контейнер с рамкой и
- * подложкой, активная кнопка выделена заливкой bg-quaternary. Размеры сняты с эталона.
+ * View switcher `Graph│Chat`, `Interact│Trace`: a container with a border and
+ * a backdrop, the active button highlighted with a bg-quaternary fill. Sizes taken from the reference.
  */
 export function SegmentedControl<T extends string>({ value, options, onChange }: Props<T>) {
   return (
@@ -25,7 +25,7 @@ export function SegmentedControl<T extends string>({ value, options, onChange }:
             type="button"
             disabled={o.disabled}
             onClick={() => onChange(o.value)}
-            className={`relative flex items-center gap-1 rounded-sm px-2 py-1 text-[13px] font-medium leading-4 tracking-[-0.26px] transition-colors duration-100 ${
+            className={`relative flex items-center gap-1 rounded-sm px-2 py-1 text-[13px] leading-4 font-medium tracking-[-0.26px] transition-colors duration-100 ${
               active
                 ? "bg-bg-quaternary text-text-primary"
                 : o.disabled

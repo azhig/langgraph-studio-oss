@@ -2,52 +2,48 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useStream } from "@langchain/langgraph-sdk/react";
 import type { ThreadState } from "@langchain/langgraph-sdk";
 import { getClient } from "@/api/client";
+import { readParam, writeParams } from "@/lib/url";
 import { useStudio } from "@/store/studio";
 import { errorText, useRun, type TaskEventData } from "@/store/run";
-import {
-  branchesByCheckpoint,
-  branchPathOf,
-  type BranchInfo,
-  type TreeSequence,
-} from "@/features/thread/branches";
+import { branchesByCheckpoint, branchPathOf, type BranchInfo, type TreeSequence } from "@/features/thread/branches";
 
 /**
- * Поток выполнения графа.
+ * Graph execution stream.
  *
- * Всё взаимодействие с сервером ведёт официальный хук `useStream` из
- * `@langchain/langgraph-sdk/react`: он создаёт тред, отправляет запуск, разбирает SSE,
- * держит значения состояния, историю контрольных точек, ветки и прерывания, умеет
- * переподключаться к незавершённому прогону при перезагрузке страницы.
- * Здесь мы только подписываемся на его события и складываем в стор то, что рисуем:
- * записи лога (`tasks`, `checkpoints`) и имя работающего узла.
+ * All interaction with the server goes through the official `useStream` hook from
+ * `@langchain/langgraph-sdk/react`: it creates the thread, submits the run, parses SSE,
+ * holds state values, checkpoint history, branches and interrupts, and can
+ * reconnect to an unfinished run after a page reload.
+ * Here we only subscribe to its events and put into the store what we render:
+ * log entries (`tasks`, `checkpoints`) and the name of the running node.
  */
 
-// `messages` нужен ради Chat mode: ответ модели печатается по мере генерации,
-// а `useStream` сам склеивает куски в готовые сообщения состояния. Режим
-// выключается в панели рядом с `Submit` — как в эталоне.
+// `messages` is needed for Chat mode: the model's reply is typed out as it is generated,
+// and `useStream` itself stitches the chunks into complete state messages. The mode
+// is turned off in the panel next to `Submit` — as in the reference.
 const STREAM_MODE = ["values", "tasks", "checkpoints"] as const;
 
 /**
- * Общие поля запуска. Сняты с эталона: он подписывается и на события подграфов,
- * а новый запуск в занятом треде откатывает незаконченный (`rollback`).
- * `streamResumable` позволяет вернуться к прогону после перезагрузки страницы.
+ * Common run fields. Taken from the reference: it also subscribes to subgraph events,
+ * and a new run in a busy thread rolls back the unfinished one (`rollback`).
+ * `streamResumable` allows returning to the run after a page reload.
  */
 /**
- * Сбой прогона приходит колбэком `onError` — этого хватает, чтобы показать ошибку.
- * Отказ промиса `submit` тут же гасим: он ничего не добавляет, а необработанное
- * отклонение попадает в консоль. (Само сообщение SDK всё равно пишет от себя.)
+ * A run failure arrives via the `onError` callback — enough to show the error.
+ * The `submit` promise rejection is swallowed right away: it adds nothing, and an unhandled
+ * rejection ends up in the console. (The SDK logs the message itself anyway.)
  */
 async function runQuietly(run: Promise<unknown>): Promise<void> {
   try {
     await run;
   } catch {
-    /* см. onError */
+    /* see onError */
   }
 }
 
 const runOptions = () => {
-  // Конфигурация ассистента уходит в запуск так же, как в эталоне:
-  // `config.configurable` со значениями формы и `recursion_limit`.
+  // The assistant configuration goes into the run the same way as in the reference:
+  // `config.configurable` with the form values and `recursion_limit`.
   const { config, recursionLimit, tags, messagesStream } = useStudio.getState();
   return {
     streamMode: messagesStream ? [...STREAM_MODE, "messages" as const] : [...STREAM_MODE],
@@ -63,28 +59,28 @@ export interface StudioStream {
   threadId: string | null;
   isLoading: boolean;
   values: Record<string, unknown>;
-  /** Контрольные точки треда, от новых к старым: из них строится лог. */
+  /** Thread checkpoints, newest first: the log is built from them. */
   history: ThreadState<Record<string, unknown>>[];
   submit: () => Promise<void>;
-  /** Записать введённое от имени узла (`As Node`) и продолжить прогон. */
+  /** Write the input on behalf of a node (`As Node`) and continue the run. */
   submitAsNode: (node: string) => Promise<void>;
-  /** Отправить сообщение в Chat mode: тот же запуск, но ввод — одно сообщение. */
+  /** Send a message in Chat mode: the same run, but the input is a single message. */
   sendMessage: (text: string) => Promise<void>;
-  /** Повторить прерванный шаг: запуск без ввода продолжает тред с текущей точки. */
+  /** Retry the interrupted step: a run without input continues the thread from the current checkpoint. */
   continueRun: () => Promise<void>;
-  /** Ответить на динамическое прерывание `interrupt()` и продолжить выполнение. */
+  /** Answer a dynamic `interrupt()` and continue execution. */
   resume: (value: unknown) => Promise<void>;
-  /** Узлы, которые сервер выполнит следующими (для кнопки `Continue`). */
+  /** Nodes the server will execute next (for the `Continue` button). */
   nextNodes: string[];
-  /** Последняя точка сохранения треда: только её прерывание ещё ждёт ответа. */
+  /** The thread's latest checkpoint: only its interrupt is still awaiting a reply. */
   headCheckpointId?: string;
-  /** Развилки треда: контрольная точка → её ветка и соседние. */
+  /** Thread forks: checkpoint → its branch and the sibling ones. */
   branches: Record<string, BranchInfo>;
-  /** Переключить показанную ветку (путь из `branches`). */
+  /** Switch the displayed branch (a path from `branches`). */
   setBranch: (branch: string) => void;
-  /** Запустить заново с контрольной точки — создаёт новую ветку. */
+  /** Re-run from a checkpoint — creates a new branch. */
   rerunFrom: (checkpointId: string) => Promise<void>;
-  /** Записать значения от имени узла в точке — тоже создаёт ветку. */
+  /** Write values on behalf of a node at a checkpoint — also creates a branch. */
   forkState: (checkpointId: string, asNode: string, values: Record<string, unknown>) => Promise<void>;
   stop: () => Promise<void>;
   newThread: () => void;
@@ -93,23 +89,15 @@ export interface StudioStream {
 
 const Ctx = createContext<StudioStream | null>(null);
 
-/** Идентификатор треда живёт в адресной строке — как в эталоне. */
-function threadFromUrl(): string | null {
-  return new URLSearchParams(window.location.search).get("threadId");
-}
-
-function writeThreadToUrl(threadId: string | null) {
-  const url = new URL(window.location.href);
-  if (threadId) url.searchParams.set("threadId", threadId);
-  else url.searchParams.delete("threadId");
-  window.history.replaceState(null, "", url);
-}
+/** The thread id lives in the URL — as in the reference. */
+const threadFromUrl = () => readParam("threadId");
+const writeThreadToUrl = (threadId: string | null) => writeParams({ threadId });
 
 export function StreamProvider({ children }: { children: ReactNode }) {
   const assistantId = useStudio((s) => s.assistantId);
   const [threadId, setThreadId] = useState<string | null>(threadFromUrl);
-  // Точка новой ветки, на которую нужно переключиться, когда история перечитается
-  const [pendingBranch, setPendingBranch] = useState<string | null>(null);
+  // The new branch's checkpoint to switch to once the history is re-read
+  const pendingBranch = useRef<string | null>(null);
   const prevAssistant = useRef(assistantId);
 
   const stream = useStream({
@@ -121,7 +109,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       writeThreadToUrl(id);
     },
     reconnectOnMount: true,
-    // По умолчанию SDK берёт 10 последних точек; для лога нужен весь ход целиком
+    // By default the SDK takes the last 10 checkpoints; the log needs the whole run
     fetchStateHistory: { limit: 200 },
     onCheckpointEvent: (data) =>
       useRun.getState().addCheckpoint({
@@ -131,18 +119,17 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         source: (data.metadata as { source?: string } | undefined)?.source,
       }),
     onTaskEvent: (data) => useRun.getState().addTask(data as unknown as TaskEventData),
-    onError: (error) =>
-      useRun.getState().setError(error instanceof Error ? error.message : errorText(error)),
+    onError: (error) => useRun.getState().setError(error instanceof Error ? error.message : errorText(error)),
   });
 
-  // Подсветка узлов на холсте и вид кнопки Submit зависят от того, идёт ли прогон
+  // Node highlighting on the canvas and the Submit button's look depend on whether a run is in progress
   useEffect(() => {
     useRun.getState().setRunning(stream.isLoading);
   }, [stream.isLoading]);
 
-  // Пока идёт прогон, лог рисуется по событиям потока; когда сервер отдал историю
-  // треда, те же шаги приходят из неё — временные записи убираем, чтобы не двоились.
-  // Оттуда же берём сорвавшийся узел: он остаётся подсвеченным с бейджем `Error`.
+  // While a run is in progress, the log is drawn from stream events; once the server has returned
+  // the thread history, the same steps come from it — temporary entries are removed to avoid duplicates.
+  // The failed node comes from there too: it stays highlighted with an `Error` badge.
   useEffect(() => {
     if (stream.isLoading || !stream.history.length) return;
     const run = useRun.getState();
@@ -152,7 +139,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     if (failed) run.setErrorNode(failed.name, errorText(failed.error));
   }, [stream.history, stream.isLoading]);
 
-  // Смена ассистента начинает всё заново: другой граф — другой тред и другой лог
+  // Switching the assistant starts everything over: another graph means another thread and another log
   useEffect(() => {
     if (prevAssistant.current && assistantId && prevAssistant.current !== assistantId) {
       setThreadId(null);
@@ -162,14 +149,15 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     prevAssistant.current = assistantId;
   }, [assistantId]);
 
-  // Правка состояния создаёт ветку — показываем её, как только история перечитана
+  // Editing the state creates a branch — show it as soon as the history is re-read
   useEffect(() => {
-    if (!pendingBranch) return;
-    const path = branchPathOf(stream.experimental_branchTree as TreeSequence, pendingBranch);
+    const wanted = pendingBranch.current;
+    if (!wanted) return;
+    const path = branchPathOf(stream.experimental_branchTree as TreeSequence, wanted);
     if (path === undefined) return;
     stream.setBranch(path);
-    setPendingBranch(null);
-  }, [pendingBranch, stream]);
+    pendingBranch.current = null;
+  }, [stream]);
 
   const submit = useCallback(async () => {
     const run = useRun.getState();
@@ -193,9 +181,9 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   }, [stream]);
 
   /**
-   * `As Node` рядом с `Submit`: тред стоит, и ввод нужно записать не как новый запуск,
-   * а как результат выбранного узла. Эталон делает ровно это — `updateState` от имени
-   * узла в текущей точке, а следом обычное продолжение прогона.
+   * `As Node` next to `Submit`: the thread is idle, and the input must be written not as a new run
+   * but as the result of the selected node. The reference does exactly this — `updateState` on behalf
+   * of the node at the current checkpoint, followed by a regular run continuation.
    */
   const submitAsNode = useCallback(
     async (asNode: string) => {
@@ -220,7 +208,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const sendMessage = useCallback(
     async (text: string) => {
       useRun.getState().setError(undefined);
-      // Эталон отправляет содержимое блоками, а не строкой
+      // The reference sends the content as blocks, not as a string
       await runQuietly(
         stream.submit({ messages: [{ type: "human", content: [{ type: "text", text }] }] }, runOptions()),
       );
@@ -254,7 +242,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       await runQuietly(
         stream.submit(null, {
           ...runOptions(),
-          // Сервер не принимает null в checkpoint_map, поэтому пустая карта
+          // The server does not accept null in checkpoint_map, so an empty map
           checkpoint: { checkpoint_id: checkpointId, checkpoint_ns: "", checkpoint_map: {} },
         }),
       );
@@ -268,10 +256,10 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       const config = await getClient().threads.updateState(threadId, { values, checkpointId, asNode });
       const created = (config.configurable as { checkpoint_id?: string } | undefined)?.checkpoint_id;
       if (!created) return;
-      setPendingBranch(created);
-      // Эталон не оставляет ветку ждать: сразу продолжает прогон с новой точки.
-      // Историю после этого перечитает сам `useStream` — трогать threadId не нужно,
-      // иначе поток пересоздастся и запуск оборвётся.
+      pendingBranch.current = created;
+      // The reference does not leave the branch waiting: it continues the run from the new checkpoint right away.
+      // `useStream` re-reads the history afterwards itself — threadId must not be touched,
+      // otherwise the stream is recreated and the run is cut off.
       await runQuietly(
         stream.submit(null, {
           ...runOptions(),

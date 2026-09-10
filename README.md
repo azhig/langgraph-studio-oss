@@ -1,33 +1,68 @@
-# LangGraph Studio OSS
+# LangGraph Studio (Unofficial)
 
-Открытая альтернатива LangSmith Studio. Интерфейс поднимается **на том же порту, что и ваш
-Agent Server**, и доступен по пути `/studio`:
+An open-source, self-hosted Studio for [LangGraph](https://github.com/langchain-ai/langgraph)
+Agent Servers. It gives you the graph view, thread log, interrupts, assistants, memory and
+chat mode of the hosted Studio, but runs entirely against your own server: no cloud,
+no account, no `?baseUrl=` and no cross-origin requests.
 
-```
-langgraph dev  →  http://127.0.0.1:2024/studio      ← интерфейс
-                  http://127.0.0.1:2024/assistants  ← API там же
-```
+Use it as a Python package mounted into `langgraph dev`, as a standalone proxy, or as a
+VS Code extension.
 
-Ни облака, ни аккаунта, ни параметра `?baseUrl=`, ни запросов между origin.
+![Demo: submitting input, watching the run, inspecting state](docs/demo.gif)
 
-## Зачем
+> **Unofficial.** This project is not affiliated with, endorsed by, or supported by
+> LangChain, Inc. LangGraph, LangChain and LangSmith are trademarks of LangChain, Inc. and
+> are used here only to describe compatibility. The UI is written from scratch; it contains
+> no code from the original Studio.
 
-Штатный Studio живёт на `smith.langchain.com` и обращается к вашему серверу снаружи.
-Отсюда три проблемы, каждая из которых воспроизводится за минуту:
+## Why
 
-- браузер блокирует запрос с `https://smith.langchain.com` на `http://127.0.0.1:2024`;
-- без аккаунта LangSmith интерфейс отвечает `403`;
-- при обходе через `--tunnel` домен туннеля отвергается списком разрешённых.
+The hosted Studio at `smith.langchain.com` talks to your local server from the outside.
+That means CORS errors against `http://127.0.0.1`, a mandatory LangSmith account, and a
+tunnel allowlist to fight when you work around it. Serving the UI from the same origin as
+the API removes all of that.
 
-Интерфейс, отданный тем же сервером, снимает все три разом.
+## Features
 
-## Установка
+- **Graph**: auto-layout identical to the original, conditional edges, subgraph
+  expand/collapse, drag, zoom, minimap, node hover cards with sources, targets and
+  interrupt toggles, live highlighting of the running node.
+- **Runs**: input form generated from `input_schema` (YAML/JSON, message builder for
+  `messages`), `Submit`, `Cancel`, input history, `messages` stream mode toggle.
+- **Threads**: thread picker with status, open by ID, `Cancel all pending runs`,
+  thread log with three detail levels, `View state` for every checkpoint (values, JSON,
+  full editor), relative timestamps.
+- **Time travel**: `Re-run from here`, `Fork` (edit a node's state and continue), branch
+  switching, error blocks with `Continue`.
+- **Interrupts**: static `Before` / `After` on any node, `Interrupt on all`, resuming
+  dynamic `interrupt()` calls, writing values `As Node`.
+- **Assistants**: `Manage Assistants` with versions, `config_schema` fields, per-node
+  configuration, graph switching.
+- **Chat mode** for graphs with typed `messages`: streaming replies, thread panel,
+  tool-call display, edit and regenerate.
+- **Memory**: browse, create, edit and delete Store items by namespace.
+- Light and dark themes. Every size, color and delay was measured on the original Studio.
+
+Not included, by design: `Trace`, `Run experiment` and `Deploy`. They require LangSmith or
+the cloud platform, which this project does not use.
+
+## Requirements
+
+- Python 3.11+ and a LangGraph Agent Server (`langgraph dev` from `langgraph-cli[inmem]`,
+  or any server exposing the Agent Server API 0.4+).
+- For the VS Code extension: VS Code 1.95+. No Python is needed on the machine running
+  VS Code, only network access to the Agent Server.
+
+## Python package
 
 ```bash
 pip install langgraph-studio-oss
 ```
 
-В `langgraph.json` вашего проекта:
+### Mode 1: mounted into `langgraph dev` (recommended)
+
+The UI is served by the Agent Server itself, on the same port. Add one line to your
+project's `langgraph.json`:
 
 ```json
 {
@@ -37,22 +72,26 @@ pip install langgraph-studio-oss
 }
 ```
 
-Запустите `langgraph dev` и откройте <http://127.0.0.1:2024/studio>.
+Run `langgraph dev` and open <http://127.0.0.1:2024/studio>. The API stays where it was
+(`/assistants`, `/threads`, ...); the UI calls it with relative paths.
 
-### Если свой `http.app` уже есть
+If you already have a custom `http.app`, mount the routes into it instead:
 
 ```python
 from langgraph_studio_oss import mount_studio
 from my_project.webapp import app
 
-mount_studio(app)                      # добавит /studio, ничего не сломав
-mount_studio(app, path="/lg-studio")   # или на другом пути
+mount_studio(app)                      # adds /studio to an existing Starlette or FastAPI app
+mount_studio(app, path="/lg-studio")   # or at another path
 ```
 
-### Если `langgraph.json` править нельзя
+`mount_studio` raises `ValueError` if the path is already taken by another route.
 
-Тогда интерфейс поднимается отдельным процессом и сам проксирует API — origin
-по-прежнему один, cross-origin не возникает:
+### Mode 2: standalone proxy
+
+When `langgraph.json` cannot be changed, run the UI as its own process. It serves the
+page and forwards every other request to the Agent Server, so the browser still sees a
+single origin.
 
 ```bash
 pip install "langgraph-studio-oss[proxy]"
@@ -60,51 +99,91 @@ langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
 # → http://127.0.0.1:8100/studio
 ```
 
-## Что умеет
+| Flag | Default | Meaning |
+|---|---|---|
+| `--target` | last saved target, else `http://127.0.0.1:2024` | Agent Server base URL |
+| `--host` | `127.0.0.1` | Interface to listen on |
+| `--port` | `8100` | Port for the UI |
+| `--path` | `/studio` | Path the UI is served at |
 
-- **Граф**: раскладка как в оригинале, условные рёбра, служебные узлы, перетаскивание,
-  зум и мини-карта, подсветка работающего узла во время прогона.
-- **Запуск**: форма по `input_schema` (YAML/JSON), `Submit`, `Cancel`, история ввода.
-- **Треды**: список, переключение, лог хода тремя уровнями детализации, `View state`,
-  относительное время, `Open thread via ID`, `Cancel all pending runs`.
-- **Отладка состояния**: `Re-run from here`, правка состояния узла (`Fork`), переключение
-  веток, ошибки прогона с `Continue`.
-- **Прерывания**: `Before`/`After` на любом узле, `Interrupt on all`, продолжение с паузы,
-  ответ на динамический `interrupt()`, запись значения от имени узла (`As Node`).
-- **Ассистенты**: `Manage Assistants` — список, создание, правка с версиями, удаление,
-  поля `config_schema`, настройки отдельного узла по шестерёнке, выбор графа.
-- **Chat mode** для графов с типизированными сообщениями: лента, потоковый ответ,
-  панель тредов, показ вызовов инструментов.
-- **Memory**: просмотр и правка записей Store (ключ, пространство имён, значение).
-- Светлая и тёмная темы, размеры и цвета сняты измерением с живого Studio.
+The proxy streams Server-Sent Events without buffering, forwards pagination headers,
+cancels the upstream request when the browser disconnects, and has no timeout on
+streaming endpoints.
 
-## Состояние
+### Connection settings
 
-Интерфейс собран и проверен на живом Agent Server (LangGraph API 0.14):
-графовый режим, треды, прерывания, ассистенты, чат и Store.
-Что осознанно не делаем — `Trace` и `Run experiment` (требуют LangSmith)
-и `Deploy` (облачная платформа): кнопки остаются на месте с пояснением.
+Click **Connected** in the header to open *Configure Studio connection*:
 
-Требования, разбор API и визуальные референсы — в [`docs/`](docs/):
+- **Base URL**: in proxy mode it is editable; `Connect` switches the proxy to the new
+  server and remembers it in `~/.config/langgraph-studio-oss/connection.json`
+  (respects `XDG_CONFIG_HOME`). An explicit `--target` on the command line overrides and
+  replaces the saved value. In mounted mode the address is fixed, because the page is
+  served by the server itself.
+- **Custom headers**: name/value pairs sent with every request, for servers behind
+  authentication. Stored in the browser only.
 
-| Документ | О чём |
+The current mode is exposed at `GET <path>/api/connection`; the proxy also accepts
+`PUT <path>/api/connection` with `{"target": "http://host:port"}`.
+
+### What is persisted where
+
+| Setting | Where |
 |---|---|
-| [REQUIREMENTS.md](docs/REQUIREMENTS.md) | Архитектура и ~70 требований с привязкой к эндпоинтам |
-| [RESEARCH.md](docs/RESEARCH.md) | Разбор Agent Server API, форматы данных, механизм монтирования |
-| [DESIGN-TOKENS.md](docs/DESIGN-TOKENS.md) | Дизайн-токены, снятые с живого Studio |
-| [references/](docs/references/) | Скриншоты интерфейса и покадровая расшифровка видеогайда |
-| [VIZLANG-NOTES.md](docs/VIZLANG-NOTES.md) | Уроки из открытых аналогов |
+| Theme, split position, log detail level | browser `localStorage` |
+| Interrupts (`before` / `after`) and manual node positions | `localStorage`, per assistant, same keys as the original Studio |
+| Custom headers | `localStorage` (`studio.headers`) |
+| Proxy target | `~/.config/langgraph-studio-oss/connection.json` |
+| Assistant, mode and thread | URL query (`assistantId`, `mode`, `threadId`), so links can be shared |
 
-## Разработка
+## VS Code extension
+
+The same UI opens as a panel inside VS Code. The extension host makes the HTTP requests
+to the Agent Server, so the webview needs no network access and nothing has to be
+installed in Python.
+
+Install the `.vsix` (or build it, see below), then run **LangGraph Studio (Unofficial): Open**
+from the Command Palette.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `langgraphStudio.target` | `http://127.0.0.1:2024` | Agent Server base URL |
+| `langgraphStudio.customHeaders` | `{}` | Headers added to every request |
+
+Both can also be changed from the **Connected** dialog inside the panel; `Connect` writes
+them back to the user settings. The panel state (theme, detail level, interrupts) is kept
+in the webview state. The active assistant and thread are not restored when the panel is
+reopened.
+
+Building the extension:
 
 ```bash
-uv venv && uv pip install -e ".[dev]"
-pytest                      # проверки серверной части
-
-cd frontend && pnpm install
-pnpm build                  # кладёт сборку в src/langgraph_studio_oss/static
+cd frontend && pnpm install && pnpm build   # also copies the UI into vscode/media
+cd ../vscode && pnpm install && pnpm build
+pnpm package                                # → langgraph-studio-unofficial-<version>.vsix
+code --install-extension langgraph-studio-unofficial-*.vsix
 ```
 
-## Лицензия
+## Development
 
-MIT.
+A `Makefile` wraps the common commands: `make setup`, `make build`, `make check`,
+`make proxy TARGET=http://host:2024`, `make package`; run `make help` for the full list.
+The underlying commands:
+
+```bash
+uv venv && uv pip install -e ".[dev,proxy]"
+pytest                      # server side
+ruff check src tests
+
+cd frontend && pnpm install
+pnpm check                  # typecheck + eslint + prettier + vitest
+pnpm build                  # writes src/langgraph_studio_oss/static and vscode/media
+
+cd ../vscode && pnpm check  # extension: typecheck + vitest
+```
+
+How the code is organised is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);
+the measured sizes, colors and timings live in [docs/DESIGN-TOKENS.md](docs/DESIGN-TOKENS.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE).

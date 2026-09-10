@@ -2,10 +2,10 @@ import { Check, ChevronDown } from "lucide-react";
 import { Popover } from "./Popover";
 
 /**
- * Выпадающий список в стиле Studio: кнопка-комбобокс с текущим значением и стрелкой,
- * список пунктов с галочкой у выбранного. Геометрия снята с эталона —
- * кнопка 34 px (`px-2.5 py-1.5`, рамка border-default, радиус 6),
- * пункт `px-2 py-1.5` с текстом 14 px и галочкой 16 px слева.
+ * Studio-style dropdown: a combobox button with the current value and an arrow,
+ * a list of items with a check mark next to the selected one. Geometry taken from the reference —
+ * a 34 px button (`px-2.5 py-1.5`, border-default border, radius 6),
+ * an item `px-2 py-1.5` with 14 px text and a 16 px check mark on the left.
  */
 export function Select({
   value,
@@ -20,7 +20,7 @@ export function Select({
   onChange: (value: string) => void;
   placeholder?: string;
   up?: boolean;
-  /** Узкий вариант: так выглядит выбор роли в конструкторе сообщений. */
+  /** Compact variant: this is how the role picker looks in the message builder. */
   compact?: boolean;
 }) {
   return (
@@ -46,7 +46,7 @@ export function Select({
             <button
               key={option}
               type="button"
-              className="flex w-full cursor-pointer select-none items-center gap-2 rounded-md px-2 py-1.5 text-left outline-none hover:bg-bg-secondary"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left outline-none select-none hover:bg-bg-secondary"
               onClick={() => {
                 onChange(option);
                 close();

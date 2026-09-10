@@ -1,17 +1,21 @@
 import { Bug } from "lucide-react";
 import type { AssistantGraph } from "@langchain/langgraph-sdk";
 import { Popover } from "@/components/Popover";
+import { Checkbox } from "@/components/Checkbox";
 import { useRun } from "@/store/run";
-import { isSystemNode } from "./colors";
+import { userNodeIds } from "./layout";
 
 /**
- * Меню `Interrupts`: для каждого узла — паузы `Before` и `After`, внизу «Interrupt on all».
- * Выбранное уходит в запуск (`interruptBefore` / `interruptAfter`), число активных
- * пауз показывается на самой кнопке — как в эталоне.
+ * The `Interrupts` menu: `Before` and `After` pauses for each node, "Interrupt on all" at the bottom.
+ * The selection goes into the run (`interruptBefore` / `interruptAfter`); the number of active
+ * pauses is shown on the button itself, as in the reference.
  */
 export function InterruptsMenu({ graph }: { graph?: AssistantGraph }) {
-  const { interruptBefore, interruptAfter, toggleInterrupt, interruptAll } = useRun();
-  const nodes = (graph?.nodes ?? []).map((n) => String(n.id)).filter((id) => !isSystemNode(id));
+  const interruptBefore = useRun((s) => s.interruptBefore);
+  const interruptAfter = useRun((s) => s.interruptAfter);
+  const toggleInterrupt = useRun((s) => s.toggleInterrupt);
+  const interruptAll = useRun((s) => s.interruptAll);
+  const nodes = userNodeIds(graph);
   const count = interruptBefore.length + interruptAfter.length;
 
   return (
@@ -42,17 +46,19 @@ export function InterruptsMenu({ graph }: { graph?: AssistantGraph }) {
             <div
               key={node}
               role="menuitem"
-              className="flex select-none items-center justify-between gap-6 rounded-sm px-2 pb-2 transition-colors hover:bg-bg-secondary"
+              className="flex items-center justify-between gap-6 rounded-sm px-2 pb-2 transition-colors select-none hover:bg-bg-secondary"
             >
               <span className="truncate text-base leading-6">{node}</span>
               <span className="flex items-center gap-2">
-                <Check
+                <Checkbox
                   label="Before"
+                  className="gap-1.5"
                   checked={interruptBefore.includes(node)}
                   onToggle={() => toggleInterrupt(node, "before")}
                 />
-                <Check
+                <Checkbox
                   label="After"
+                  className="gap-1.5"
                   checked={interruptAfter.includes(node)}
                   onToggle={() => toggleInterrupt(node, "after")}
                 />
@@ -64,7 +70,7 @@ export function InterruptsMenu({ graph }: { graph?: AssistantGraph }) {
           <button
             type="button"
             role="menuitem"
-            className="flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-left text-base leading-6 transition-colors hover:bg-bg-secondary"
+            className="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-left text-base leading-6 transition-colors select-none hover:bg-bg-secondary"
             onClick={() => interruptAll(nodes)}
           >
             {count > 0 ? "Clear all" : "Interrupt on all"}
@@ -72,30 +78,5 @@ export function InterruptsMenu({ graph }: { graph?: AssistantGraph }) {
         </div>
       )}
     </Popover>
-  );
-}
-
-function Check({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex shrink-0 items-center gap-1.5 py-2 text-xs text-text-tertiary"
-      onClick={onToggle}
-    >
-      <span
-        className={`flex size-4 items-center justify-center rounded-[4px] border ${
-          checked
-            ? "border-bg-brand bg-bg-brand-tertiary text-text-brand-secondary"
-            : "border-border-secondary"
-        }`}
-      >
-        {checked && (
-          <svg viewBox="0 0 12 12" className="size-3" aria-hidden>
-            <path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        )}
-      </span>
-      <span>{label}</span>
-    </button>
   );
 }

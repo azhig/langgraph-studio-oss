@@ -1,55 +1,59 @@
 import type { Theme } from "@/store/studio";
 
 /**
- * Цвета узлов графа.
+ * Graph node colors.
  *
- * Схема снята с живого Studio (docs/DESIGN-TOKENS.md, «Узлы графа») и воспроизведена
- * так, чтобы одно и то же имя узла давало тот же цвет, что и в оригинале:
+ * The scheme was captured from live Studio (docs/DESIGN-TOKENS.md, "Graph nodes") and reproduced
+ * so that the same node name yields the same color as in the original:
  *
- *  1. имя → 32-битный хэш FNV-1a;
- *  2. хэш → один шаг линейного конгруэнтного генератора; из него — оттенок
- *     (дробная часть произведения на золотое сечение × 360°), насыщенность 50…70 %
- *     и светлота 40…90 %;
- *  3. из базового тона (HSLA) выводятся все остальные цвета: текст — светлота 80 %
- *     в тёмной теме и 40 % в светлой, заливка — alpha 0.1, рамка — светлота не выше
- *     60 %, минимапа — не выше 40 % (тёмная) / 60 % (светлая), рёбра — рамка с alpha 0.8.
+ *  1. name -> 32-bit FNV-1a hash;
+ *  2. hash -> one step of a linear congruential generator; from it the hue
+ *     (fractional part of the product with the golden ratio x 360 deg), saturation 50...70 %
+ *     and lightness 40...90 %;
+ *  3. all other colors derive from the base tone (HSLA): text is lightness 80 %
+ *     in the dark theme and 40 % in the light one, fill is alpha 0.1, border is lightness capped
+ *     at 60 %, minimap capped at 40 % (dark) / 60 % (light), edges are the border with alpha 0.8.
  *
- * Служебные `__start__` / `__end__` вместо базового тона получают белый (тёмная тема)
- * или чёрный (светлая), после чего к ним применяются те же правила.
+ * The system `__start__` / `__end__` nodes get white (dark theme) or black (light) instead
+ * of a base tone, after which the same rules apply to them.
  */
 
 export type Hsla = [h: number, s: number, l: number, a: number];
 
 export interface NodePalette {
-  /** Базовый тон (для производных: подписи рёбер, штриховка). */
+  /** Base tone (for derived colors: edge labels, hatching). */
   tone: Hsla;
-  /** Рамка узла (непрозрачная). */
+  /** Node border (opaque). */
   border: string;
-  /** Заливка узла: тон с alpha 0.1. */
+  /** Node fill: tone with alpha 0.1. */
   background: string;
-  /** Текст подписи. */
+  /** Node avatar fill (the lettered circle in the log and settings): tone with alpha 0.2. */
+  avatarBackground: string;
+  /** Chip fill in the node card: tone with alpha 0.15. */
+  chipBackground: string;
+  /** Label text. */
   text: string;
-  /** Исходящие рёбра: цвет рамки с alpha 0.8. */
+  /** Outgoing edges: border color with alpha 0.8. */
   edge: string;
-  /** Стрелка ребра: цвет рамки, непрозрачный. */
+  /** Edge arrow: border color, opaque. */
   arrow: string;
-  /** Прямоугольник на минимапе. */
+  /** Rectangle on the minimap. */
   minimap: string;
-  /** Точка-шестерёнка (фон и глиф), обычное состояние и при наведении. */
+  /** Gear dot (background and glyph), normal and hovered states. */
   dotBackground: string;
   dotBackgroundHover: string;
   dotForeground: string;
   dotForegroundHover: string;
-  /** Штриховка узла на паузе: текст с alpha 0.15. */
+  /** Hatching of a paused node: text with alpha 0.15. */
   stripes: string;
 }
 
 export const isSystemNode = (id: string) => id === "__start__" || id === "__end__";
 
 /**
- * Хэш имени в духе FNV-1a, 32 бита. Умножение намеренно выполняется в обычной
- * арифметике double, а не через Math.imul: именно так считает эталон, и при
- * длинных именах старшие биты теряются. Замена на точное умножение даст другие цвета.
+ * FNV-1a-style hash of the name, 32 bits. The multiplication is deliberately done in plain
+ * double arithmetic rather than Math.imul: that is exactly how the reference computes it, and
+ * with long names the high bits are lost. Replacing it with exact multiplication would change the colors.
  */
 export function hashName(name: string): number {
   let h = 2166136261;
@@ -64,7 +68,7 @@ const SATURATION: [number, number] = [50, 70];
 const LIGHTNESS: [number, number] = [40, 90];
 const GOLDEN = 0.618033988749895;
 
-/** Базовый тон из хэша. */
+/** Base tone from the hash. */
 export function toneFromHash(hash: number): Hsla {
   const r = (1664525 * hash + 1013904223) % 2 ** 32;
   const hue = ((r * GOLDEN) % 1) * 360;
@@ -87,12 +91,14 @@ export function paletteFromTone(tone: Hsla, theme: Theme, system = false): NodeP
   const dark = theme === "dark";
   const border = capLightness(tone, 60);
   const text = system ? tone : withLightness(tone, dark ? 80 : 40);
-  // У служебных узлов рёбра и стрелки берут исходный белый/чёрный, а не рамку (#999)
+  // For system nodes edges and arrows take the original white/black, not the border (#999)
   const edgeTone = system ? tone : border;
   return {
     tone,
     border: hsla(border),
     background: hsla(withAlpha(tone, 0.1)),
+    avatarBackground: hsla(withAlpha(tone, 0.2)),
+    chipBackground: hsla(withAlpha(tone, 0.15)),
     text: hsla(text),
     edge: hsla(withAlpha(edgeTone, 0.8)),
     arrow: hsla(edgeTone),

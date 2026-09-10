@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { CircleAlert, Settings } from "lucide-react";
+import { cx } from "@/lib/cx";
 import { useRun } from "@/store/run";
 import { useStudio } from "@/store/studio";
 import { HoverCard } from "@/components/HoverCard";
@@ -8,51 +9,49 @@ import { NodeConfigModal } from "@/features/assistants/NodeConfigModal";
 import { NodeHoverCard } from "./NodeHoverCard";
 import { SubgraphIcon } from "./SubgraphFrame";
 import { subgraphOf } from "./layout";
-import type { NodePalette } from "./colors";
-import { isSystemNode } from "./colors";
+import { isSystemNode, type NodePalette } from "./colors";
 
 export type NodeStatus = "idle" | "active" | "error";
 
 export interface GraphNodeData extends Record<string, unknown> {
   name: string;
   palette: NodePalette;
-  /** Есть поля конфигурации, привязанные к узлу (config_schema.langgraph_nodes). */
+  /** Has configuration fields bound to the node (config_schema.langgraph_nodes). */
   configurable: boolean;
-  /** Соседи узла: показываются в карточке при наведении. */
+  /** Node neighbors: shown in the hover card. */
   sources: string[];
   targets: string[];
-  /** За узлом стоит подграф: его можно раскрыть кликом. */
+  /** A subgraph stands behind the node: it can be expanded by clicking. */
   subgraph: boolean;
 }
 
 export type GraphFlowNode = Node<GraphNodeData, "studio">;
 
 /**
- * Узел графа: размеры заданы раскладкой (width/height на самом узле),
- * оформление выведено из тона (DESIGN-TOKENS.md, «Узлы графа»).
+ * Graph node: dimensions come from the layout (width/height on the node itself),
+ * styling is derived from the tone (DESIGN-TOKENS.md, "Graph nodes").
  *
- * Во время прогона эталон гасит всё, кроме работающего узла: обёртка получает
- * `opacity: .1`, а активный — `opacity: 1` и увеличение 1.05 с переходом 300 мс.
- * Состояние прогона узел читает из стора сам, а не получает пропсами: объекты узлов
- * React Flow пересоздавать нельзя, иначе теряются измеренные размеры и хэндлы.
- * Сами хэндлы скрыты — рёбра считают точки входа и выхода геометрией (GraphEdge).
+ * During a run the reference dims everything except the running node: the wrapper gets
+ * `opacity: .1`, while the active one gets `opacity: 1` and a 1.05 scale with a 300 ms transition.
+ * The node reads run state from the store itself rather than via props: React Flow
+ * node objects must not be recreated, or measured sizes and handles are lost.
+ * The handles themselves are hidden; edges compute entry and exit points geometrically (GraphEdge).
  */
 function GraphNodeComponent({ id, data }: NodeProps<GraphFlowNode>) {
   const { name, palette, configurable, sources, targets, subgraph } = data;
-  const status = useRun((s) =>
-    s.activeNode === id ? "active" : s.errorNode === id ? "error" : "idle",
-  ) as NodeStatus;
-  // Штриховка помечает узел, на котором стоит прерывание: она держится всё время,
-  // пока пауза включена в меню `Interrupts`, а не только когда тред на ней встал.
-  // Пауза `before` штрихует верхнюю половину узла, `after` — нижнюю, обе — весь узел.
+  const status = useRun((s) => (s.activeNode === id ? "active" : s.errorNode === id ? "error" : "idle")) as NodeStatus;
+  // Hatching marks the node that has an interrupt set: it stays on the whole time
+  // the pause is enabled in the `Interrupts` menu, not only when the thread has stopped on it.
+  // A `before` pause hatches the top half of the node, `after` the bottom, both the whole node.
   const before = useRun((s) => s.interruptBefore.includes(id));
   const after = useRun((s) => s.interruptAfter.includes(id));
-  const stripes = before && after ? "inset-0 rounded-md" : before ? "top-0 h-1/2 rounded-t-md" : "bottom-0 h-1/2 rounded-b-md";
-  // Пока идёт прогон, светится работающий узел; после срыва — тот, на котором встали.
-  // На паузе эталон ничего не гасит: узел из `next` просто покрывается штриховкой.
-  // Наведение на запись лога подсвечивает её узел и гасит остальные до 30 %.
-  // Подсветка распространяется на весь подграф: запись `worker` в логе поднимает
-  // и рамку, и вложенные узлы — так же поступает эталон
+  const stripes =
+    before && after ? "inset-0 rounded-md" : before ? "top-0 h-1/2 rounded-t-md" : "bottom-0 h-1/2 rounded-b-md";
+  // While a run is in progress the running node glows; after a failure, the one it stopped on.
+  // On pause the reference dims nothing: the node from `next` is simply covered with hatching.
+  // Hovering a log entry highlights its node and dims the rest to 30 %.
+  // The highlight extends to the whole subgraph: a `worker` entry in the log raises
+  // both the frame and the nested nodes, as the reference does
   const parent = subgraphOf(id);
   const hovered = useRun((s) => s.hoverNode === id || (parent !== undefined && s.hoverNode === parent));
   const dimmed = useRun((s) => {
@@ -69,12 +68,13 @@ function GraphNodeComponent({ id, data }: NodeProps<GraphFlowNode>) {
   const subgraphOpen = useStudio((s) => s.expandedSubgraphs.includes(id));
   return (
     <div className="relative">
-      <Handle type="target" position={Position.Top} className="!opacity-0 !pointer-events-none" />
+      <Handle type="target" position={Position.Top} className="!pointer-events-none !opacity-0" />
       {configurable && !system && (
         <button
           type="button"
-          aria-label="Edit node configuration" title="Edit node configuration"
-          className="absolute -right-1 -top-1 z-10 flex size-3 items-center justify-center rounded-full"
+          aria-label="Edit node configuration"
+          title="Edit node configuration"
+          className="absolute -top-1 -right-1 z-10 flex size-3 items-center justify-center rounded-full"
           style={{ background: palette.dotBackground, color: palette.dotForeground }}
           onClick={() => setConfigOpen(true)}
         >
@@ -100,22 +100,24 @@ function GraphNodeComponent({ id, data }: NodeProps<GraphFlowNode>) {
             />
           }
         >
-        <div
-          className={`node-body group relative w-full border p-2 text-center text-sm font-medium leading-none ${
-            system ? "rounded-full" : "rounded-md"
-          } ${subgraph ? "cursor-pointer" : ""}`}
-          style={{ color: palette.text, background: palette.background, borderColor: palette.border }}
-          onClick={subgraph ? () => toggleSubgraph(id) : undefined}
-        >
-          <div className="relative z-[2] flex items-center justify-center gap-1.5">
-            {subgraph && <SubgraphIcon expanded={subgraphOpen} />}
-            <span className="leading-none">{name}</span>
+          <div
+            className={cx(
+              "node-body group relative w-full border p-2 text-center text-sm leading-none font-medium",
+              system ? "rounded-full" : "rounded-md",
+              subgraph && "cursor-pointer",
+            )}
+            style={{ color: palette.text, background: palette.background, borderColor: palette.border }}
+            onClick={subgraph ? () => toggleSubgraph(id) : undefined}
+          >
+            <div className="relative z-[2] flex items-center justify-center gap-1.5">
+              {subgraph && <SubgraphIcon expanded={subgraphOpen} />}
+              <span className="leading-none">{name}</span>
+            </div>
+            <span
+              className={`node-stripes pointer-events-none absolute inset-x-0 z-[1] overflow-hidden transition-opacity ${stripes}`}
+              style={{ opacity: before || after ? 1 : 0, color: palette.stripes }}
+            />
           </div>
-          <span
-            className={`node-stripes pointer-events-none absolute inset-x-0 z-[1] overflow-hidden transition-opacity ${stripes}`}
-            style={{ opacity: before || after ? 1 : 0, color: palette.stripes }}
-          />
-        </div>
         </HoverCard>
       </div>
       <NodeConfigModal
@@ -125,14 +127,14 @@ function GraphNodeComponent({ id, data }: NodeProps<GraphFlowNode>) {
         onOpenAssistants={() => openAssistants(true)}
       />
       {status === "error" && (
-        <div className="absolute left-full top-1/2 ml-2 -translate-y-1/2">
+        <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2">
           <div className="flex flex-row items-center gap-0.5 rounded-md border border-border-error bg-bg-error-secondary px-2 py-1 text-text-error-secondary">
             <CircleAlert size={10} strokeWidth={1.8} />
-            <span className="text-[8px] font-medium leading-none">Error</span>
+            <span className="text-[8px] leading-none font-medium">Error</span>
           </div>
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="!opacity-0 !pointer-events-none" />
+      <Handle type="source" position={Position.Bottom} className="!pointer-events-none !opacity-0" />
     </div>
   );
 }

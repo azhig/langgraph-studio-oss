@@ -1,21 +1,22 @@
 import dagre from "@dagrejs/dagre";
 import type { AssistantGraph } from "@langchain/langgraph-sdk";
+import { isSystemNode } from "./colors";
 
-/** Геометрия узла, общая для раскладки и отрисовки: они обязаны совпадать. */
+/** Node geometry shared by layout and rendering: they must match. */
 export const NODE_HEIGHT = 32;
-/** Ширина узла зависит от длины имени: измерено на Studio, 64 px + 7 px на символ. */
+/** Node width depends on the name length: measured on Studio, 64 px + 7 px per character. */
 export const nodeWidth = (name: string) => 64 + 7 * name.length;
 
 /**
- * Параметры раскладки. Сверху вниз, интервалы 50 px — при них координаты узлов
- * совпадают с эталоном с точностью до четверти пикселя на обоих проверенных графах.
+ * Layout parameters. Top to bottom, 50 px spacing: with these the node coordinates
+ * match the reference to within a quarter pixel on both verified graphs.
  *
- * Версия dagre важна: результат проверен на @dagrejs/dagre 1.1.x (в 2.x и 3.x
- * изменился алгоритм упорядочивания, и картинка расходится с эталоном).
+ * The dagre version matters: the result is verified on @dagrejs/dagre 1.1.x (2.x and 3.x
+ * changed the ordering algorithm, and the picture diverges from the reference).
  *
- * Циклы (`agent ⇄ tools`) отдельно не обрабатываем: первый шаг алгоритма Сугиямы
- * внутри dagre сам находит обратные рёбра обходом в глубину и временно их разворачивает.
- * Ручной разворот перед dagre меняет порядок рёбер и уводит раскладку от эталона.
+ * Cycles (`agent <-> tools`) need no special handling: the first step of the Sugiyama
+ * algorithm inside dagre finds back edges itself by depth-first traversal and temporarily reverses them.
+ * Reversing them manually before dagre changes the edge order and pulls the layout away from the reference.
  */
 export const LAYOUT = { rankdir: "TB", nodesep: 50, ranksep: 50 } as const;
 
@@ -34,13 +35,13 @@ export interface LaidOutEdge {
   target: string;
   conditional: boolean;
   label?: string;
-  /** Есть ли встречное ребро target/source: такие пары рисуются дугами в разные стороны. */
+  /** Whether an opposing target/source edge exists: such pairs are drawn as arcs in opposite directions. */
   paired: boolean;
 }
 
 /**
- * Рамка вокруг раскрытого подграфа. Отступы измерены на эталоне: 35 px по бокам
- * и 25 px сверху и снизу от крайних вложенных узлов.
+ * Frame around an expanded subgraph. Padding measured on the reference: 35 px on the sides
+ * and 25 px above and below the outermost nested nodes.
  */
 export const SUBGRAPH_PAD_X = 35;
 export const SUBGRAPH_PAD_Y = 25;
@@ -57,27 +58,27 @@ export interface LaidOutGroup {
 export interface Layout {
   nodes: LaidOutNode[];
   edges: LaidOutEdge[];
-  /** Рамки раскрытых подграфов; вложенные узлы лежат в `nodes` как обычные. */
+  /** Frames of expanded subgraphs; nested nodes sit in `nodes` like regular ones. */
   groups: LaidOutGroup[];
 }
 
-/** Узел принадлежит подграфу: сервер называет его вложенные узлы `<подграф>:<узел>`. */
+/** The node belongs to a subgraph: the server names its nested nodes `<subgraph>:<node>`. */
 export const subgraphOf = (id: string): string | undefined =>
   id.includes(":") ? id.slice(0, id.indexOf(":")) : undefined;
 
-/** Короткое имя вложенного узла: эталон подписывает их без префикса подграфа. */
+/** Short name of a nested node: the reference labels them without the subgraph prefix. */
 export const shortName = (id: string): string => (id.includes(":") ? id.slice(id.indexOf(":") + 1) : id);
 
+/** Graph nodes without the system `__start__` / `__end__`: for the `Interrupts` menu and the `As Node` picker. */
+export const userNodeIds = (graph?: AssistantGraph): string[] =>
+  (graph?.nodes ?? []).map((n) => String(n.id)).filter((id) => !isSystemNode(id));
+
 /**
- * Схлопывает подграфы, которые не раскрыты: их вложенные узлы заменяются одним
- * узлом-подграфом, а рёбра переносятся на него. Эталон получает от сервера
- * развёрнутый граф (`xray`) и показывает ровно такую свёртку.
+ * Collapses subgraphs that are not expanded: their nested nodes are replaced by a single
+ * subgraph node, and edges are rerouted to it. The reference receives the expanded
+ * graph (`xray`) from the server and shows exactly this collapsed form.
  */
-export function collapseSubgraphs(
-  graph: AssistantGraph,
-  subgraphs: string[],
-  expanded: string[],
-): AssistantGraph {
+export function collapseSubgraphs(graph: AssistantGraph, subgraphs: string[], expanded: string[]): AssistantGraph {
   const collapse = new Set(subgraphs.filter((s) => !expanded.includes(s)));
   const map = (id: string) => {
     const parent = subgraphOf(id);
@@ -96,7 +97,7 @@ export function collapseSubgraphs(
   for (const e of graph.edges) {
     const source = map(e.source);
     const target = map(e.target);
-    // Внутренние рёбра схлопнутого подграфа превращаются в петли — их не рисуем
+    // Internal edges of a collapsed subgraph become self-loops; they are not drawn
     if (source === target && source !== e.source) continue;
     const key = `${source}\u0000${target}\u0000${e.conditional ? 1 : 0}`;
     if (pairs.has(key)) continue;
@@ -122,7 +123,7 @@ export function layoutGraph(graph: AssistantGraph, expanded: string[] = []): Lay
   g.setGraph({ ...LAYOUT });
   g.setDefaultEdgeLabel(() => ({}));
   for (const id of ids) {
-    // Ширина считается по видимой подписи: у вложенного узла это имя без префикса подграфа
+    // Width is computed from the visible label: for a nested node that is the name without the subgraph prefix
     g.setNode(id, { width: nodeWidth(shortName(names.get(id) ?? id)), height: NODE_HEIGHT });
   }
   graph.edges.forEach((e, i) => g.setEdge(e.source, e.target, {}, String(i)));
@@ -138,12 +139,12 @@ export function layoutGraph(graph: AssistantGraph, expanded: string[] = []): Lay
     minY = Math.min(minY, y);
     return { id, name: names.get(id) ?? id, x, y, width: p.width, height: p.height };
   });
-  // Сдвигаем в начало координат; четверть пикселя — та же точность, что у эталона (82.75)
+  // Shift to the origin; a quarter pixel is the same precision as the reference (82.75)
   const q = (v: number) => Math.round(v * 4) / 4;
   const nodes = raw.map((n) => ({ ...n, name: shortName(n.name), x: q(n.x - minX), y: q(n.y - minY) }));
   const groups = frameSubgraphs(nodes, expanded);
-  // Рамка подграфа выступает левее вложенных узлов: сдвигаем всё, чтобы холст
-  // по-прежнему начинался с нуля — так же поступает эталон
+  // The subgraph frame extends left of the nested nodes: shift everything so the canvas
+  // still starts at zero, as the reference does
   const shift = -Math.min(0, ...groups.map((g) => g.x));
   if (shift > 0) {
     for (const n of nodes) n.x += shift;
@@ -152,7 +153,7 @@ export function layoutGraph(graph: AssistantGraph, expanded: string[] = []): Lay
 
   const key = (s: string, t: string) => `${s} ${t}`;
   const present = new Set(graph.edges.map((e) => key(e.source, e.target)));
-  // Эталон зовёт ребро `source-target`; порядковый номер появляется только у повторов
+  // The reference names an edge `source-target`; the ordinal appears only for repeats
   const seen = new Map<string, number>();
   const edges: LaidOutEdge[] = graph.edges.map((e) => {
     const k = key(e.source, e.target);
@@ -171,12 +172,12 @@ export function layoutGraph(graph: AssistantGraph, expanded: string[] = []): Lay
 }
 
 /**
- * Раздвигает раскладку вокруг раскрытых подграфов и возвращает их рамки.
+ * Spreads the layout around expanded subgraphs and returns their frames.
  *
- * Сначала dagre считает всё как обычный граф, потом ряды раздвигаются: вложенные
- * узлы и всё, что ниже них, опускаются на отступ рамки сверху, а то, что ниже
- * подграфа, — ещё на отступ снизу. Так шаг между рядами на границе рамки
- * становится 107 px вместо 82 px — ровно как у эталона.
+ * First dagre lays everything out as a regular graph, then rows are spread: nested
+ * nodes and everything below them move down by the top frame padding, and what lies
+ * below the subgraph moves down by the bottom padding as well. Thus the row step at the
+ * frame boundary becomes 107 px instead of 82 px, exactly as in the reference.
  */
 function frameSubgraphs(nodes: LaidOutNode[], expanded: string[]): LaidOutGroup[] {
   const groups: LaidOutGroup[] = [];
@@ -186,13 +187,13 @@ function frameSubgraphs(nodes: LaidOutNode[], expanded: string[]): LaidOutGroup[
     .sort((a, b) => Math.min(...inner(a).map((n) => n.y)) - Math.min(...inner(b).map((n) => n.y)));
 
   for (const id of order) {
-    // Зазор сверху: опускаем сам подграф и всё, что ниже него
+    // Top gap: move the subgraph itself and everything below it down
     const above = Math.min(...inner(id).map((n) => n.y));
     for (const n of nodes) if (n.y >= above) n.y += SUBGRAPH_PAD_Y;
 
     const top = Math.min(...inner(id).map((n) => n.y));
     const bottom = Math.max(...inner(id).map((n) => n.y + n.height));
-    // Зазор снизу: опускаем только то, что лежит ниже подграфа
+    // Bottom gap: move down only what lies below the subgraph
     for (const n of nodes) if (n.y >= bottom) n.y += SUBGRAPH_PAD_Y;
 
     const left = Math.min(...inner(id).map((n) => n.x));

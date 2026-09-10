@@ -1,6 +1,6 @@
-"""Открытая альтернатива LangSmith Studio.
+"""An open alternative to LangSmith Studio.
 
-Интерфейс монтируется в ваш Agent Server и доступен на том же порту:
+The UI is mounted into your Agent Server and served on the same port:
 
     // langgraph.json
     {"http": {"app": "langgraph_studio_oss:app"}}
@@ -11,5 +11,5 @@
 
 from langgraph_studio_oss.app import DEFAULT_PATH, app, mount_studio, studio_routes
 
-__all__ = ["app", "mount_studio", "studio_routes", "DEFAULT_PATH"]
+__all__ = ["DEFAULT_PATH", "app", "mount_studio", "studio_routes"]
 __version__ = "0.1.0"

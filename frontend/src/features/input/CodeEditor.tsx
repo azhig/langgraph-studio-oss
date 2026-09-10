@@ -1,15 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { EditorState, Compartment, type Extension } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
-import {
-  bracketMatching,
-  foldGutter,
-  indentUnit,
-  syntaxHighlighting,
-  HighlightStyle,
-} from "@codemirror/language";
+import { bracketMatching, foldGutter, indentUnit, syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { yaml } from "@codemirror/lang-yaml";
 import { json } from "@codemirror/lang-json";
 import { tags } from "@lezer/highlight";
@@ -17,12 +11,12 @@ import type { Lang } from "./format";
 import { useStudio, type Theme } from "@/store/studio";
 
 /**
- * Редактор значения поля.
+ * Field value editor.
  *
- * Геометрия снята с эталона (docs/DESIGN-TOKENS.md, «Редактор»): гуттер 52 px с
- * выравниванием номеров вправо, контент с отступом 12 px, шрифт 13px/18.2px,
- * поэтому одна строка даёт ровно 42.2 px высоты. Палитра — тоже измеренная:
- * основной текст #3760bf (светлая) / #7982a9 (тёмная), литералы — зелёные.
+ * Geometry captured from the reference (docs/DESIGN-TOKENS.md, "Editor"): a 52 px gutter with
+ * right-aligned numbers, content with 12 px padding, font 13px/18.2px,
+ * so one line yields exactly 42.2 px of height. The palette is measured too:
+ * main text #3760bf (light) / #7982a9 (dark), literals are green.
  */
 
 const PALETTE: Record<Theme, { text: string; literal: string }> = {
@@ -31,8 +25,8 @@ const PALETTE: Record<Theme, { text: string; literal: string }> = {
 };
 
 /**
- * В YAML значения без кавычек размечены как `content`, в кавычках — `string`;
- * ключи, скобки и разделители остаются основным цветом. Так же выглядит эталон.
+ * In YAML unquoted values are tagged as `content`, quoted ones as `string`;
+ * keys, brackets and separators keep the main color. The reference looks the same.
  */
 function highlight(theme: Theme) {
   const p = PALETTE[theme];
@@ -68,7 +62,7 @@ function baseTheme(theme: Theme) {
       minWidth: "52px",
     },
     ".cm-lineNumbers .cm-gutterElement": { padding: "0 4px 0 8px", minWidth: "32px", textAlign: "right" },
-    // Колонка сворачивания: 20 px со стрелкой 16 px — как в эталоне
+    // Fold column: 20 px with a 16 px arrow, as in the reference
     ".cm-foldGutter": { minWidth: "20px" },
     ".cm-foldGutter .cm-gutterElement": { padding: "0 2px", color: "var(--text-quaternary)" },
     ".cm-foldGutter .cm-gutterElement span": { fontSize: "16px", lineHeight: "18.2px" },
@@ -78,7 +72,7 @@ function baseTheme(theme: Theme) {
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
       backgroundColor: "var(--bg-quaternary)",
     },
-    // Парная скобка подсвечивается только в фокусе и тем же зелёным, что у эталона
+    // The matching bracket is highlighted only in focus and in the same green as the reference
     "&.cm-focused .cm-matchingBracket": {
       backgroundColor: "rgba(50, 140, 130, 0.32)",
       color: "inherit",
@@ -92,19 +86,19 @@ interface Props {
   value: string;
   lang: Lang;
   onChange: (value: string) => void;
-  /** Ставится в фокус после монтирования (эталон фокусирует первое поле формы). */
+  /** Focused after mounting (the reference focuses the first form field). */
   autoFocus?: boolean;
-  /** Только для чтения: так показан снимок состояния в `View state`. */
+  /** Read-only: this is how the full editor is shown in `View state`. */
   readOnly?: boolean;
-  /** Без номеров строк и колонки сворачивания — как снимок в `View state`. */
-  plain?: boolean;
 }
 
-export function CodeEditor({ value, lang, onChange, autoFocus, readOnly = false, plain = false }: Props) {
+export function CodeEditor({ value, lang, onChange, autoFocus, readOnly = false }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useLayoutEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
   const theme = useStudio((s) => s.theme);
   const langComp = useRef(new Compartment());
   const themeComp = useRef(new Compartment());
@@ -116,7 +110,8 @@ export function CodeEditor({ value, lang, onChange, autoFocus, readOnly = false,
       state: EditorState.create({
         doc: value,
         extensions: [
-          ...(plain ? [] : [lineNumbers(), foldGutter()]),
+          lineNumbers(),
+          foldGutter(),
           history(),
           drawSelection(),
           bracketMatching(),
@@ -139,11 +134,11 @@ export function CodeEditor({ value, lang, onChange, autoFocus, readOnly = false,
       v.destroy();
       view.current = null;
     };
-    // Редактор создаётся один раз: значение, язык и тема доезжают отдельными эффектами
+    // The editor is created once: value, language and theme arrive via separate effects
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Внешнее изменение значения (сброс после Submit, переключение языка, история ввода)
+  // External value change (reset after Submit, language switch, input history)
   useEffect(() => {
     const v = view.current;
     if (!v || v.state.doc.toString() === value) return;

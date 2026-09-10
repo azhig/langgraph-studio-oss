@@ -1,11 +1,11 @@
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// Сборка кладётся прямо в Python-пакет и раздаётся Starlette по /studio.
-// base "./" — все ссылки на ассеты относительные, поэтому путь монтирования
-// можно менять на стороне сервера без пересборки.
+// The build goes straight into the Python package and is served by Starlette at /studio.
+// base "./" — all asset links are relative, so the mount path
+// can be changed on the server side without a rebuild.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: "./",
@@ -17,12 +17,17 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // В dev-режиме API проксируется на локальный Agent Server — те же относительные пути.
+    // In dev mode the API is proxied to the local Agent Server — the same relative paths.
     proxy: {
       "^/(assistants|threads|runs|store|info|ok|mcp|a2a|docs|openapi.json)": {
         target: "http://127.0.0.1:2024",
         changeOrigin: false,
       },
     },
+  },
+  test: {
+    // Tests cover pure modules (layout, colors, branches, history parsing) — they need no DOM
+    environment: "node",
+    include: ["src/**/*.test.ts"],
   },
 });

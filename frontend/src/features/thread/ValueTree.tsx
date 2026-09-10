@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { asMessages, messageText, roleLabel, roleTitle, type MessageLike } from "@/lib/messages";
+import { useResettableState } from "@/hooks/useResettableState";
 
 /**
- * Дерево значений состояния. Структура снята с эталона (поповер `View state` и
- * раскрытые записи лога): строка `[шеврон] ключ`, значение — ниже или рядом,
- * ключи моноширинным шрифтом, примитивы — цветом `--text-tertiary`.
+ * State value tree. Structure taken from the reference (the `View state` popover and
+ * expanded log records): a `[chevron] key` row, the value below or beside it,
+ * keys in monospace, primitives in `--text-tertiary`.
  */
 export function ValueTree({
   name,
@@ -18,21 +19,18 @@ export function ValueTree({
   value: unknown;
   depth?: number;
   /**
-   * Дерево внешних данных (значение `interrupt()`): у эталона там даже строка
-   * раскрывается шевроном, текст стоит под ключом, а ключи идут по алфавиту.
+   * Tree of external data (the `interrupt()` value): in the reference even a string
+   * expands with a chevron, the text sits under the key, and keys are alphabetical.
    */
   foreign?: boolean;
-  /** Только вид «ключ с шевроном, значение под ним» — так устроен лог треда. */
+  /** Only the "key with chevron, value below" view — this is how the thread log is built. */
   leafBelow?: boolean;
-  /** Начальное состояние ветки; по умолчанию раскрыт только корень. */
+  /** Initial branch state; by default only the root is expanded. */
   defaultOpen?: boolean;
 }) {
   const branch = isBranch(value);
-  const [open, setOpen] = useState(defaultOpen ?? depth < 1);
-  // Уровень детализации меняет раскрытие на лету, а не только при первом показе
-  useEffect(() => {
-    if (defaultOpen !== undefined) setOpen(defaultOpen);
-  }, [defaultOpen]);
+  // The detail level changes expansion on the fly, not only on first render
+  const [open, setOpen] = useResettableState(defaultOpen ?? depth < 1, defaultOpen);
 
   if (!branch && (foreign || leafBelow) && name !== undefined) {
     return (
@@ -42,20 +40,20 @@ export function ValueTree({
       >
         <button
           type="button"
-          className="grid w-full min-w-0 select-none grid-cols-[auto_1fr] items-center gap-2 text-left outline-none"
+          className="grid w-full min-w-0 grid-cols-[auto_1fr] items-center gap-2 text-left outline-none select-none"
           onClick={() => setOpen((v) => !v)}
         >
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="flex size-5 shrink-0 items-center justify-center">
               {open ? <ChevronDown size={16} strokeWidth={1.5} /> : <ChevronRight size={16} strokeWidth={1.5} />}
             </span>
-            <span className="min-w-[30px] truncate whitespace-nowrap text-sm font-medium leading-[1.15] tracking-tighter">
+            <span className="min-w-[30px] truncate text-sm leading-[1.15] font-medium tracking-tighter whitespace-nowrap">
               <span className="font-mono">{name}</span>
             </span>
           </span>
-          {/* Свёрнутый скаляр эталон подписывает значением справа от ключа */}
+          {/* The reference labels a collapsed scalar with its value to the right of the key */}
           <span className="flex min-w-[30px] items-center gap-2">
-            {/* Значение эталон держит абзацем: в тексте лога оно отделено переводом строки */}
+            {/* The reference keeps the value as a paragraph: in the log text it is separated by a line break */}
             {!open && (
               <p className="min-w-0 truncate text-sm leading-normal tracking-normal text-text-tertiary">
                 {format(value)}
@@ -65,7 +63,7 @@ export function ValueTree({
         </button>
         {open && (
           <span className="flex min-w-0 flex-col gap-2 text-sm">
-            <span className="w-full whitespace-pre-wrap text-sm leading-[1.65] tracking-tight text-text-primary">
+            <span className="w-full text-sm leading-[1.65] tracking-tight whitespace-pre-wrap text-text-primary">
               {format(value)}
             </span>
           </span>
@@ -78,23 +76,23 @@ export function ValueTree({
     return (
       <div className="grid grid-cols-[auto_1fr] items-start gap-2" data-testid={`value-leaf-${name ?? ""}`}>
         {name !== undefined && <Key name={name} />}
-        <span className="min-w-0 whitespace-pre-wrap break-words text-sm text-text-tertiary">{format(value)}</span>
+        <span className="min-w-0 text-sm break-words whitespace-pre-wrap text-text-tertiary">{format(value)}</span>
       </div>
     );
   }
 
-  // Список сообщений эталон подписывает ролями (Human, AI, Tool), а не индексами
+  // The reference labels the message list with roles (Human, AI, Tool), not indices
   const messages = asMessages(value);
   const entries: Array<[string, unknown]> = Array.isArray(value)
     ? value.map((v, i) => [messages ? roleTitle(messages[i]) : String(i), v])
-    : // Эталон показывает ключи внешних данных по алфавиту, а не в порядке ответа
+    : // The reference shows external data keys alphabetically, not in response order
       sortKeys(Object.entries(value as Record<string, unknown>), foreign);
 
   return (
     <div className="relative flex w-full flex-col items-stretch justify-center gap-y-1">
       <button
         type="button"
-        className="grid w-full min-w-0 select-none grid-cols-[auto_1fr] items-center gap-2 text-left outline-none"
+        className="grid w-full min-w-0 grid-cols-[auto_1fr] items-center gap-2 text-left outline-none select-none"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="flex min-w-0 items-center gap-1.5">
@@ -102,7 +100,7 @@ export function ValueTree({
             {open ? <ChevronDown size={16} strokeWidth={1.5} /> : <ChevronRight size={16} strokeWidth={1.5} />}
           </span>
           {name !== undefined ? (
-            <span className="min-w-[30px] truncate whitespace-nowrap text-sm font-medium leading-[1.15] tracking-tighter">
+            <span className="min-w-[30px] truncate text-sm leading-[1.15] font-medium tracking-tighter whitespace-nowrap">
               <span className="font-mono">{name}</span>
             </span>
           ) : (
@@ -133,23 +131,12 @@ export function ValueTree({
 }
 
 /**
- * Сообщение в дереве значений: строка «роль — превью текста», а внутри —
- * тот же бабл, что в логе. Снято с эталона: роль полужирная, превью справа
- * серым с обрезкой, чип `ID` появляется при наведении.
+ * Message in the value tree: a "role — text preview" row, and inside —
+ * the same bubble as in the log. Taken from the reference: bold role, preview on the right
+ * in gray with truncation, the `ID` chip appears on hover.
  */
-function MessageNode({
-  title,
-  message,
-  defaultOpen,
-}: {
-  title: string;
-  message: MessageLike;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
-  useEffect(() => {
-    if (defaultOpen !== undefined) setOpen(defaultOpen);
-  }, [defaultOpen]);
+function MessageNode({ title, message, defaultOpen }: { title: string; message: MessageLike; defaultOpen?: boolean }) {
+  const [open, setOpen] = useResettableState(defaultOpen ?? false, defaultOpen);
   const text = messageText(message.content);
   const id = typeof message.id === "string" ? message.id : undefined;
 
@@ -158,14 +145,14 @@ function MessageNode({
       <div className="group/message bg-inherit">
         <button
           type="button"
-          className="grid w-full min-w-0 select-none grid-cols-[auto_1fr] items-center gap-2 text-left outline-none"
+          className="grid w-full min-w-0 grid-cols-[auto_1fr] items-center gap-2 text-left outline-none select-none"
           onClick={() => setOpen((v) => !v)}
         >
           <span className="flex min-w-0 items-center gap-2">
             <span className="flex size-5 shrink-0 items-center justify-center text-text-secondary">
               {open ? <ChevronDown size={16} strokeWidth={1.5} /> : <ChevronRight size={16} strokeWidth={1.5} />}
             </span>
-            <span className="min-w-[30px] truncate whitespace-nowrap text-sm font-semibold leading-[1.15] tracking-tighter">
+            <span className="min-w-[30px] truncate text-sm leading-[1.15] font-semibold tracking-tighter whitespace-nowrap">
               {title}
             </span>
           </span>
@@ -182,10 +169,10 @@ function MessageNode({
         </button>
       </div>
       {open && (
-        // Внутри дерева значений эталон рисует сообщение без пузыря: роль и текст подряд
+        // Inside the value tree the reference draws the message without a bubble: role and text in a row
         <span className="flex min-w-0 flex-col gap-2 pl-0 text-sm">
           <span className="flex flex-col gap-2 overflow-auto whitespace-pre-wrap">
-            <span className="text-xs font-semibold uppercase text-text-tertiary">{roleOf(message)}</span>
+            <span className="text-xs font-semibold text-text-tertiary uppercase">{roleLabel(message)}</span>
             <span className="text-sm leading-[1.65] tracking-tight text-text-primary">{text}</span>
           </span>
         </span>
@@ -194,58 +181,9 @@ function MessageNode({
   );
 }
 
-export interface MessageLike {
-  id?: unknown;
-  type?: string;
-  role?: string;
-  content?: unknown;
-  name?: string;
-}
-
-const ROLE_TITLES: Record<string, string> = {
-  human: "Human",
-  user: "Human",
-  ai: "AI",
-  assistant: "AI",
-  tool: "Tool",
-  system: "System",
-};
-
-/** Роль сообщения в верхнем регистре — так подписан бабл в логе. */
-export function roleOf(m: MessageLike): string {
-  const raw = String(m.type ?? m.role ?? "message").toLowerCase().replace(/message$/, "");
-  return (ROLE_TITLES[raw] ?? raw).toUpperCase();
-}
-
-/** Заголовок узла сообщения: `Human`, `AI`, `Tool` — как в эталоне. */
-function roleTitle(m: MessageLike): string {
-  const raw = String(m.type ?? m.role ?? "message").toLowerCase().replace(/message$/, "");
-  return ROLE_TITLES[raw] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
-}
-
-/** Содержимое бывает строкой или списком блоков — показываем текст. */
-export function messageText(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content))
-    return content
-      .map((part) => (typeof part === "string" ? part : ((part as { text?: string })?.text ?? JSON.stringify(part))))
-      .join("");
-  if (content === undefined || content === null) return "";
-  return JSON.stringify(content);
-}
-
-/** Массив сообщений LangChain: у каждого элемента есть содержимое и роль. */
-export function asMessages(value: unknown): MessageLike[] | null {
-  if (!Array.isArray(value) || !value.length) return null;
-  const ok = value.every(
-    (v) => v && typeof v === "object" && "content" in v && ("type" in v || "role" in v),
-  );
-  return ok ? (value as MessageLike[]) : null;
-}
-
 function Key({ name }: { name: string }) {
   return (
-    <span className="min-w-[30px] truncate whitespace-nowrap pl-5 text-sm font-medium leading-[1.15] tracking-tighter">
+    <span className="min-w-[30px] truncate pl-5 text-sm leading-[1.15] font-medium tracking-tighter whitespace-nowrap">
       <span className="font-mono">{name}</span>
     </span>
   );
@@ -263,7 +201,7 @@ const format = (v: unknown) => {
   return JSON.stringify(v);
 };
 
-/** Свёрнутая ветка показывает краткое содержимое, чтобы не разворачивать всё подряд. */
+/** A collapsed branch shows a short summary so not everything has to be expanded. */
 function preview(value: unknown): string {
   if (Array.isArray(value)) return value.length ? "[...]" : "[]";
   const keys = Object.keys(value as Record<string, unknown>);

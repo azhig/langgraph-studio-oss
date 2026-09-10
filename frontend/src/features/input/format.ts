@@ -1,23 +1,24 @@
 import { parse, stringify } from "yaml";
+import { refersToMessages, schemaType, type JsonSchema } from "@/lib/schema";
 
-/** Язык редактора значения. Эталон предлагает YAML и JSON, по умолчанию YAML. */
+/** Value editor language. The reference offers YAML and JSON, YAML by default. */
 export type Lang = "yaml" | "json";
 
 export interface Parsed {
   value?: unknown;
-  /** Сообщение об ошибке разбора; при ошибке Submit блокируется. */
+  /** Parse error message; on error Submit is blocked. */
   error?: string;
 }
 
-/** Значение → текст в выбранном языке. Пустая строка означает «поле не задано». */
+/** Value -> text in the selected language. An empty string means "field not set". */
 export function toText(value: unknown, lang: Lang): string {
   if (value === undefined) return "";
   if (lang === "json") return JSON.stringify(value, null, 2);
-  // lineWidth 0 — не переносить длинные строки: в узкой панели перенос мешает читать
+  // lineWidth 0: do not wrap long strings; in a narrow panel wrapping hurts readability
   return stringify(value, { lineWidth: 0 }).replace(/\n$/, "");
 }
 
-/** Текст → значение. Пустой текст — не ошибка, просто отсутствие значения. */
+/** Text -> value. Empty text is not an error, just an absent value. */
 export function parseText(text: string, lang: Lang): Parsed {
   if (!text.trim()) return {};
   try {
@@ -27,35 +28,29 @@ export function parseText(text: string, lang: Lang): Parsed {
   }
 }
 
-/** Сообщения парсеров многословны: оставляем первую строку без служебных координат. */
+/**
+ * Language switch preserving the value: parse with the old one, print with the new.
+ * Text that does not parse is left as is; otherwise the edit would be lost.
+ */
+export function convertText(text: string, from: Lang, to: Lang): string {
+  const parsed = parseText(text, from);
+  return parsed.error ? text : toText(parsed.value, to);
+}
+
+/** Parser messages are verbose: keep the first line without the technical coordinates. */
 function cleanMessage(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e);
   const first = raw.split("\n")[0].trim();
   return first.replace(/^YAMLParseError:\s*/, "").replace(/\s+at position \d+.*$/, "");
 }
 
-type Schema = {
-  type?: string | string[];
-  default?: unknown;
-  properties?: Record<string, Schema>;
-  items?: Schema;
-  anyOf?: Schema[];
-  title?: string;
-  description?: string;
-};
-
-const typeOf = (s?: Schema): string | undefined => {
-  const t = s?.type ?? s?.anyOf?.find((v) => v.type && v.type !== "null")?.type;
-  return Array.isArray(t) ? t.find((v) => v !== "null") : t;
-};
-
 /**
- * Начальное значение поля. Эталон подставляет пустой контейнер по типу схемы:
- * для `messages` (массив) в редакторе изначально стоит `[]`.
+ * Initial field value. The reference substitutes an empty container by schema type:
+ * for `messages` (an array) the editor initially holds `[]`.
  */
-export function defaultValue(schema?: Schema): unknown {
+export function defaultValue(schema?: JsonSchema): unknown {
   if (schema && "default" in schema && schema.default !== undefined) return schema.default;
-  switch (typeOf(schema)) {
+  switch (schemaType(schema)) {
     case "array":
       return [];
     case "object":
@@ -67,25 +62,21 @@ export function defaultValue(schema?: Schema): unknown {
   }
 }
 
-/** Сообщения LangChain: схема ссылается на их типы (`AIMessage`, `HumanMessage`…). */
-const MESSAGE_TYPES = ["AIMessage", "HumanMessage", "SystemMessage", "ToolMessage", "ChatMessage"];
-
-export function isMessagesField(field: Field): boolean {
-  if (field.key !== "messages") return false;
-  const text = JSON.stringify(field.schema ?? {});
-  return MESSAGE_TYPES.some((t) => text.includes(`/${t}"`));
-}
-
 export interface Field {
   key: string;
   title: string;
   required: boolean;
-  schema?: Schema;
+  schema?: JsonSchema;
 }
 
-/** Поля формы ввода в порядке из input_schema. */
+/** A `messages` field whose items are typed as LangChain messages: the reference edits it with the builder. */
+export function isMessagesField(field: Field): boolean {
+  return field.key === "messages" && refersToMessages(field.schema);
+}
+
+/** Input form fields in input_schema order. */
 export function inputFields(inputSchema?: unknown): Field[] {
-  const s = inputSchema as { properties?: Record<string, Schema>; required?: string[] } | undefined;
+  const s = inputSchema as JsonSchema | undefined;
   const required = new Set(s?.required ?? []);
   return Object.entries(s?.properties ?? {}).map(([key, schema]) => ({
     key,

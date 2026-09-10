@@ -1,7 +1,7 @@
 [project]
 name = "langgraph-studio-oss"
-version = "0.1.0"
-description = "Открытая альтернатива LangSmith Studio: UI монтируется в ваш Agent Server по пути /studio"
+dynamic = ["version"]
+description = "Unofficial, community-built Studio UI for local LangGraph Agent Servers, mounted at /studio. Not affiliated with LangChain, Inc."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Запасной режим запуска: свой процесс с интерфейсом и обратным прокси
+# Fallback launch mode: a separate process with the UI and a reverse proxy
 proxy = [
     "httpx>=0.28",
     "uvicorn>=0.30",
@@ -19,7 +19,7 @@ dev = [
     "langgraph-cli[inmem]>=0.4",
     "httpx>=0.28",
     "pytest>=8",
-    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
 ]
 
 [project.scripts]
@@ -29,7 +29,24 @@ langgraph-studio-oss = "langgraph_studio_oss.cli:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "src/langgraph_studio_oss/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/langgraph_studio_oss"]
-# Сборка фронта лежит в .gitignore, но в колесо попадать обязана
+# The frontend build is git-ignored but must be included in the wheel
 artifacts = ["src/langgraph_studio_oss/static/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# RUF001-003: ambiguous-unicode checks (en dashes, arrows in docstrings) are not errors here
+ignore = ["RUF001", "RUF002", "RUF003"]

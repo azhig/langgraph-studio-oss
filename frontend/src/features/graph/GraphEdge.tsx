@@ -13,9 +13,9 @@ import { useRun } from "@/store/run";
 export interface GraphEdgeData extends Record<string, unknown> {
   conditional: boolean;
   label?: string;
-  /** Есть встречное ребро: пара рисуется двумя дугами, выгнутыми в разные стороны. */
+  /** An opposing edge exists: the pair is drawn as two arcs bowed in opposite directions. */
   paired: boolean;
-  /** Цвет линии (тон узла-источника, alpha 0.8) и стрелки (тот же тон, непрозрачный). */
+  /** Line color (source node tone, alpha 0.8) and arrow color (same tone, opaque). */
   stroke: string;
   arrow: string;
 }
@@ -30,10 +30,10 @@ interface Rect {
 }
 
 /**
- * Точки входа/выхода ребра. Снято с эталона: ребро выходит через нижнюю
- * (или верхнюю, если цель выше) грань источника и входит через верхнюю (нижнюю)
- * грань цели, а точка на грани — пересечение отрезка между центрами узлов с этой гранью.
- * Поэтому рёбра к соседям слева/справа выходят не из центра, а со сдвигом к цели.
+ * Edge entry/exit points. Captured from the reference: the edge leaves through the bottom
+ * (or top, if the target is above) side of the source and enters through the top (bottom)
+ * side of the target; the point on the side is the intersection of the segment between node centers with that side.
+ * Hence edges to neighbors on the left/right leave not from the center but shifted toward the target.
  */
 function endpoints(s: Rect, t: Rect) {
   const sc = { x: s.x + s.w / 2, y: s.y + s.h / 2 };
@@ -44,7 +44,7 @@ function endpoints(s: Rect, t: Rect) {
   const dy = tc.y - sc.y;
   const clamp = (x: number, r: Rect) => Math.min(r.x + r.w, Math.max(r.x, x));
   if (Math.abs(dy) < 1e-6) {
-    // Узлы на одном уровне: соединяем ближайшие боковые грани
+    // Nodes on the same level: connect the nearest lateral sides
     const right = tc.x >= sc.x;
     return {
       sx: right ? s.x + s.w : s.x,
@@ -69,7 +69,7 @@ function endpoints(s: Rect, t: Rect) {
 function GraphEdgeComponent({ id, source, target, data }: EdgeProps<GraphFlowEdge>) {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
-  // Во время прогона и после срыва эталон гасит все рёбра до 20 %; пауза их не трогает
+  // During a run and after a failure the reference dims all edges to 20 %; a pause leaves them alone
   const dimmed = useRun((s) => s.running || Boolean(s.errorNode));
   if (!sourceNode || !targetNode || !data) return null;
 
@@ -87,7 +87,7 @@ function GraphEdgeComponent({ id, source, target, data }: EdgeProps<GraphFlowEdg
   let labelY: number;
 
   if (source === target) {
-    // Петля: небольшая дуга справа от узла
+    // Self-loop: a small arc to the right of the node
     const x = s.x + s.w;
     const y = s.y + s.h / 2;
     path = `M ${x - 8},${s.y + s.h} C ${x + 30},${s.y + s.h + 20} ${x + 30},${s.y - 20} ${x - 8},${s.y}`;
@@ -96,11 +96,11 @@ function GraphEdgeComponent({ id, source, target, data }: EdgeProps<GraphFlowEdg
   } else {
     const e = endpoints(s, t);
     if (data.paired) {
-      // Встречные рёбра: квадратичная дуга. Контрольная точка сдвинута от середины
-      // по горизонтали на половину вертикального расстояния в сторону движения,
-      // а по вертикали на половину горизонтального против движения. Снято с эталона:
-      // при таком правиле обе дуги пары расходятся симметрично при любом взаимном
-      // расположении узлов. Для строго вертикальной пары сдвиг задаём явно.
+      // Opposing edges: a quadratic arc. The control point is shifted from the midpoint
+      // horizontally by half the vertical distance in the direction of travel,
+      // and vertically by half the horizontal distance against it. Captured from the reference:
+      // with this rule both arcs of a pair diverge symmetrically for any mutual
+      // placement of the nodes. For a strictly vertical pair the offset is set explicitly.
       const dx = e.tx - e.sx;
       const dy = e.ty - e.sy;
       const sx = dx === 0 ? Math.sign(dy) : Math.sign(dx);

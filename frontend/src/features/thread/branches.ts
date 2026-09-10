@@ -1,24 +1,24 @@
 import type { ThreadState } from "@langchain/langgraph-sdk";
 
 /**
- * Ветки треда.
+ * Thread branches.
  *
- * `useStream` отдаёт дерево контрольных точек: последовательности узлов и развилки
- * (`fork`) там, где от одной точки пошло несколько продолжений. Ветка адресуется
- * путём из идентификаторов точек, склеенным через `>`; этот же путь принимает
- * `setBranch`. Здесь дерево разбирается в таблицу «контрольная точка → её ветка
- * и соседние», чтобы в логе показать `‹ Fork 2 of 2 ›`.
+ * `useStream` returns a tree of checkpoints: sequences of nodes and forks
+ * (`fork`) where several continuations grew from one checkpoint. A branch is addressed
+ * by a path of checkpoint ids joined with `>`; the same path is accepted by
+ * `setBranch`. Here the tree is parsed into a table "checkpoint → its branch
+ * and siblings" so the log can show `‹ Fork 2 of 2 ›`.
  */
 
 const SEP = ">";
 const ROOT = "$";
 
 export interface BranchInfo {
-  /** Путь текущей ветки — значение для `setBranch`. */
+  /** Path of the current branch — the value for `setBranch`. */
   branch: string;
-  /** Все ветки этой развилки, от старой к новой. */
+  /** All branches of this fork, oldest to newest. */
   options: string[];
-  /** Порядковый номер текущей ветки, начиная с единицы. */
+  /** One-based index of the current branch. */
   index: number;
 }
 
@@ -43,7 +43,7 @@ export function branchesByCheckpoint(tree?: TreeSequence): Record<string, Branch
   const nodes: TreeNode[] = [];
   collect(tree, nodes);
 
-  // Пути ветвлений группируются по развилке — предпоследний элемент пути
+  // Branch paths are grouped by fork — the second-to-last element of the path
   const byFork = new Map<string, string[][]>();
   const seen = new Set<string>();
   for (const node of nodes) {
@@ -54,7 +54,7 @@ export function branchesByCheckpoint(tree?: TreeSequence): Record<string, Branch
     const fork = node.path.at(-2) ?? ROOT;
     byFork.set(fork, [...(byFork.get(fork) ?? []), node.path]);
   }
-  // Идентификаторы точек растут со временем, поэтому сортировка даёт порядок появления веток
+  // Checkpoint ids grow over time, so sorting yields the order branches appeared
   for (const paths of byFork.values()) {
     paths.sort((a, b) => (a.at(-1) ?? "").localeCompare(b.at(-1) ?? ""));
   }
@@ -63,8 +63,8 @@ export function branchesByCheckpoint(tree?: TreeSequence): Record<string, Branch
   for (const node of nodes) {
     const checkpointId = node.value.checkpoint?.checkpoint_id;
     if (!checkpointId || !node.path.length) continue;
-    // Переключатель нужен только там, где ветка начинается: путь оканчивается
-    // идентификатором этой самой точки. Иначе он повторялся бы на каждом шаге ветки.
+    // The switcher is needed only where a branch starts: the path ends with
+    // the id of this very checkpoint. Otherwise it would repeat on every step of the branch.
     if (checkpointId !== node.path.at(-1)) continue;
     const options = (byFork.get(node.path.at(-2) ?? ROOT) ?? []).map((p) => p.join(SEP));
     const branch = node.path.join(SEP);
@@ -81,7 +81,7 @@ function collect(sequence: TreeSequence, out: TreeNode[]) {
   }
 }
 
-/** Путь ветки, в которой лежит указанная контрольная точка (значение для `setBranch`). */
+/** Path of the branch containing the given checkpoint (the value for `setBranch`). */
 export function branchPathOf(tree: TreeSequence | undefined, checkpointId: string): string | undefined {
   if (!tree) return undefined;
   const nodes: TreeNode[] = [];

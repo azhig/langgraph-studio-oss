@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { PlayCircle } from "lucide-react";
+import { FieldError } from "@/components/FieldError";
 import { useStudioStream } from "@/features/run/StreamProvider";
 import { ValueField } from "@/features/input/ValueField";
-import { CodeEditor } from "@/features/input/CodeEditor";
+import { CodePanel } from "@/features/input/CodePanel";
 import { parseText, toText, type Lang } from "@/features/input/format";
 import type { NodeEntry } from "@/store/run";
 
 /**
- * Правка состояния в записи лога. Значения записываются от имени узла в его
- * контрольной точке, поэтому получается новая ветка — в эталоне кнопка так и
- * называется `Fork`.
+ * State editing in a log record. Values are written on behalf of the node at its
+ * checkpoint, so a new branch is produced — in the reference the button is
+ * literally called `Fork`.
  */
 export function useNodeStateEditor(entry: NodeEntry, onClose: () => void) {
   const { forkState } = useStudioStream();
@@ -46,15 +47,10 @@ export function useNodeStateEditor(entry: NodeEntry, onClose: () => void) {
     }
   };
 
-  // Кнопки эталон держит в строке имени узла справа, а поля — под ней
+  // The reference keeps the buttons in the node name row on the right, and the fields below it
   const actions = (
     <div className="ml-auto flex items-center gap-1">
-      <button
-        type="button"
-        className="btn btn-ghost h-[26px]"
-        onClick={() => setRaw((v) => !v)}
-        disabled={busy}
-      >
+      <button type="button" className="btn btn-ghost h-[26px]" onClick={() => setRaw((v) => !v)} disabled={busy}>
         {raw ? "View Rendered" : "View Raw"}
       </button>
       <button type="button" className="btn btn-outline h-[26px]" onClick={onClose} disabled={busy}>
@@ -84,14 +80,14 @@ export function useNodeStateEditor(entry: NodeEntry, onClose: () => void) {
           />
         ))
       )}
-      {error && <div className="px-1 text-[13px] text-text-error-secondary">{error}</div>}
+      {error && <FieldError text={error} />}
     </div>
   );
 
   return { actions, body };
 }
 
-/** `View Raw`: все поля одним объектом JSON. */
+/** `View Raw`: all fields as one JSON object. */
 function RawFields({
   text,
   lang,
@@ -113,22 +109,19 @@ function RawFields({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="overflow-hidden rounded-md border border-border-secondary">
-        <div className="cm-shell">
-          <CodeEditor
-            value={value}
-            lang="json"
-            onChange={(next) => {
-              setValue(next);
-              const p = parseText(next, "json");
-              if (p.error || typeof p.value !== "object" || p.value === null) return;
-              const obj = p.value as Record<string, unknown>;
-              onChange(Object.fromEntries(Object.keys(text).map((k) => [k, toText(obj[k], lang[k] ?? "yaml")])));
-            }}
-          />
-        </div>
-      </div>
-      {parsed.error && <div className="px-1 text-[13px] text-text-error-secondary">{parsed.error}</div>}
+      <CodePanel
+        value={value}
+        lang="json"
+        bar={false}
+        onChange={(next) => {
+          setValue(next);
+          const p = parseText(next, "json");
+          if (p.error || typeof p.value !== "object" || p.value === null) return;
+          const obj = p.value as Record<string, unknown>;
+          onChange(Object.fromEntries(Object.keys(text).map((k) => [k, toText(obj[k], lang[k] ?? "yaml")])));
+        }}
+      />
+      {parsed.error && <FieldError text={parsed.error} />}
     </div>
   );
 }

@@ -1,14 +1,14 @@
 import type { ThreadState } from "@langchain/langgraph-sdk";
-import { errorText, type LogEntry } from "@/store/run";
+import { asUpdates, errorText, type Interrupt, type LogEntry } from "@/store/run/types";
 
 /**
- * Записи лога из истории треда.
+ * Log records from thread history.
  *
- * `useStream` отдаёт контрольные точки от старых к новым; каждая несёт время, значения
- * состояния и задачи, которые из неё выполнялись (`tasks[].result` — то, что узел
- * записал). Первая точка хода помечена `metadata.source === "input"`, и её задача —
- * служебный `__start__` с отправленным вводом. Этого достаточно, чтобы восстановить
- * лог целиком: строка времени, затем запись узла — как в эталоне.
+ * `useStream` returns checkpoints from oldest to newest; each carries a time, the state
+ * values and the tasks executed from it (`tasks[].result` — what the node
+ * wrote). The first checkpoint of a turn is marked `metadata.source === "input"`, and its task
+ * is the service `__start__` with the submitted input. That is enough to rebuild
+ * the whole log: a time row, then a node record — as in the reference.
  */
 export function entriesFromHistory(history: ThreadState<Record<string, unknown>>[]): LogEntry[] {
   const out: LogEntry[] = [];
@@ -24,7 +24,7 @@ export function entriesFromHistory(history: ThreadState<Record<string, unknown>>
       checkpointId,
       values: state.values,
       turnStart: source === "input",
-      // С самой первой точки треда перезапускать нечего — эталон там кнопку не рисует
+      // There is nothing to re-run from the very first checkpoint — the reference draws no button there
       root: first,
       next: state.next ? [...state.next] : undefined,
       tasks: (state.tasks ?? []) as unknown[],
@@ -42,7 +42,7 @@ export function entriesFromHistory(history: ThreadState<Record<string, unknown>>
         updates: asUpdates(task.result),
         error: errorText(task.error),
         subgraphNs: (task.checkpoint as { checkpoint_ns?: string } | null | undefined)?.checkpoint_ns || undefined,
-        interrupts: (task.interrupts ?? []) as Array<{ id?: string; value: unknown }>,
+        interrupts: (task.interrupts ?? []) as Interrupt[],
         done: true,
       });
     }
@@ -50,9 +50,17 @@ export function entriesFromHistory(history: ThreadState<Record<string, unknown>>
   return out;
 }
 
-/** Результат задачи приходит объектом каналов, иногда — парами [канал, значение]. */
-function asUpdates(result: unknown): Record<string, unknown> | undefined {
-  if (!result) return undefined;
-  if (Array.isArray(result)) return Object.fromEntries(result as Array<[string, unknown]>);
-  return result as Record<string, unknown>;
+export interface TurnGroup {
+  key: string;
+  entries: LogEntry[];
+}
+
+/** A turn starts with the run's input checkpoint (`source: "input"`). */
+export function splitTurns(entries: LogEntry[]): TurnGroup[] {
+  const turns: TurnGroup[] = [];
+  for (const e of entries) {
+    if ((e.kind === "checkpoint" && e.turnStart) || !turns.length) turns.push({ key: e.key, entries: [] });
+    turns[turns.length - 1].entries.push(e);
+  }
+  return turns;
 }

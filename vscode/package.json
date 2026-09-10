@@ -1,0 +1,64 @@
+{
+  "name": "langgraph-studio-unofficial",
+  "displayName": "LangGraph Studio (Unofficial)",
+  "description": "Unofficial, community-built LangGraph Studio for your local Agent Server: graph, threads, interrupts, assistants and memory. Not affiliated with LangChain, Inc.",
+  "version": "0.1.0",
+  "publisher": "azhig",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "langgraphStudio.open",
+        "title": "LangGraph Studio (Unofficial): Open"
+      }
+    ],
+    "configuration": {
+      "title": "LangGraph Studio",
+      "properties": {
+        "langgraphStudio.target": {
+          "type": "string",
+          "default": "http://127.0.0.1:2024",
+          "description": "Agent Server base URL (langgraph dev)."
+        },
+        "langgraphStudio.customHeaders": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "Headers added to every request to the Agent Server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc6 -p tsconfig.json",
+    "typecheck": "tsc6 -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "@types/vscode": "^1.95.0",
+    "playwright-core": "^1.63.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^5.0.0"
+  },
+  "keywords": [
+    "langgraph",
+    "langgraph studio",
+    "agent server",
+    "graph",
+    "debugger"
+  ]
+}

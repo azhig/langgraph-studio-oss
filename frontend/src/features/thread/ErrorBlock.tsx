@@ -1,19 +1,21 @@
 import { useState } from "react";
 import { ChevronRight, Copy, CircleAlert } from "lucide-react";
+import { copyText } from "@/lib/clipboard";
+import { cx } from "@/lib/cx";
 
 /**
- * Плашка ошибки под записью узла.
+ * Error panel below a node record.
  *
- * Снята с эталона: полоса `bg-error` с радиусом 4 px и отступами `2px 4px 2px 6px`,
- * круглая иконка 16 px на `--bg-error-subtle`, метка `Error` и текст ошибки — 12px/16px.
- * Свёрнутая показывает одну строку с многоточием; кнопки справа — копирование
- * и раскрытие полного сообщения.
+ * Taken from the reference: a `bg-error` bar with 4 px radius and `2px 4px 2px 6px` padding,
+ * a round 16 px icon on `--bg-error-subtle`, the `Error` label and the error text — 12px/16px.
+ * Collapsed, it shows one line with an ellipsis; buttons on the right — copy
+ * and expand the full message.
  */
 export function ErrorBlock({ message }: { message: string }) {
   const [open, setOpen] = useState(false);
   const full = formatError(message);
   return (
-    <div className="w-full rounded-sm bg-bg-error py-0.5 pl-1.5 pr-1">
+    <div className="w-full rounded-sm bg-bg-error py-0.5 pr-1 pl-1.5">
       <div className="flex w-full items-start gap-2">
         <span className="shrink-0 pt-px">
           <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-bg-error-subtle p-[2px] text-text-error-tertiary">
@@ -21,14 +23,15 @@ export function ErrorBlock({ message }: { message: string }) {
           </span>
         </span>
         <div className="flex min-w-0 flex-1 flex-row gap-1">
-          <span className="flex shrink-0 items-center whitespace-nowrap text-xxs font-medium leading-4 text-text-error-secondary dark:text-text-error-tertiary">
+          <span className="flex shrink-0 items-center text-xxs leading-4 font-medium whitespace-nowrap text-text-error-secondary dark:text-text-error-tertiary">
             Error
           </span>
           <span
             aria-hidden={open}
-            className={`min-w-0 truncate whitespace-nowrap text-xxs leading-4 text-text-error-secondary dark:text-text-error-primary ${
-              open ? "pointer-events-none h-0" : ""
-            }`}
+            className={cx(
+              "min-w-0 truncate text-xxs leading-4 whitespace-nowrap text-text-error-secondary dark:text-text-error-primary",
+              open && "pointer-events-none h-0",
+            )}
           >
             {message}
           </span>
@@ -38,7 +41,7 @@ export function ErrorBlock({ message }: { message: string }) {
             type="button"
             title="Copy error"
             className="btn btn-ghost !rounded-xs !p-0.5 text-text-secondary"
-            onClick={() => void navigator.clipboard?.writeText(message)}
+            onClick={() => copyText(message)}
           >
             <Copy size={14} strokeWidth={1.5} />
           </button>
@@ -50,18 +53,14 @@ export function ErrorBlock({ message }: { message: string }) {
             className="btn btn-ghost !rounded-xs !p-0.5 text-text-secondary"
             onClick={() => setOpen((v) => !v)}
           >
-            <ChevronRight
-              size={14}
-              strokeWidth={1.5}
-              className={`transition-transform ${open ? "rotate-90" : ""}`}
-            />
+            <ChevronRight size={14} strokeWidth={1.5} className={cx("transition-transform", open && "rotate-90")} />
           </button>
         </div>
       </div>
-      {/* Раскрытая ошибка — отдельный блок под шапкой плашки, как в эталоне */}
+      {/* The expanded error is a separate block below the panel header, as in the reference */}
       {open && (
-        <div className="flex flex-col gap-1 pb-1 pl-5 pr-1">
-          <span className="whitespace-pre-wrap break-words text-xxs leading-4 text-text-error-secondary dark:text-text-error-primary">
+        <div className="flex flex-col gap-1 pr-1 pb-1 pl-5">
+          <span className="text-xxs leading-4 break-words whitespace-pre-wrap text-text-error-secondary dark:text-text-error-primary">
             {full}
           </span>
         </div>
@@ -71,8 +70,8 @@ export function ErrorBlock({ message }: { message: string }) {
 }
 
 /**
- * Сообщение приходит одной строкой (`RuntimeError('…')`), а эталон разбивает его
- * на имя, аргументы с отступом и закрывающую скобку.
+ * The message arrives as one line (`RuntimeError('…')`), while the reference splits it
+ * into the name, indented arguments and the closing bracket.
  */
 function formatError(message: string): string {
   const m = /^([A-Za-z_][\w.]*)\((.*)\)$/s.exec(message.trim());

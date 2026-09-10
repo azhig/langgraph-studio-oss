@@ -9,8 +9,25 @@ wheels/
 # Virtual environments
 .venv
 node_modules
+.pytest_cache/
+.ruff_cache/
+
+# VS Code extension
+vscode/node_modules/
+vscode/out/
+vscode/media/
+vscode/*.vsix
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
 src/langgraph_studio_oss/static/assets/
 src/langgraph_studio_oss/static/index.html
+
+.DS_Store
+
+# Working materials: task brief, API notes, reference screenshots, MCP config
+docs/internal/
+.mcp.json

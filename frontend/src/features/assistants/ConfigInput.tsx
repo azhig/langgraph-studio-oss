@@ -1,9 +1,9 @@
+import { isNumericType } from "@/lib/schema";
 import { Select } from "@/components/Select";
-import { useStudio } from "@/store/studio";
-import { nodePalette } from "@/features/graph/colors";
+import { NodeAvatar } from "@/features/graph/NodeAvatar";
 import type { ConfigField } from "./config";
 
-/** Поле конфигурации: подпись, аватары узлов справа, описание и редактор значения. */
+/** Config field: label, node avatars on the right, description and value editor. */
 export function ConfigInput({
   field,
   value,
@@ -13,10 +13,9 @@ export function ConfigInput({
   field: ConfigField;
   value: unknown;
   onChange: (value: unknown) => void;
-  /** В настройках одного узла аватары `Used in node` не нужны — узел и так известен. */
+  /** In a single node's settings the `Used in node` avatars are redundant — the node is already known. */
   showNodes?: boolean;
 }) {
-  const theme = useStudio((s) => s.theme);
   const text = value === undefined || value === null ? "" : String(value);
   return (
     <div className="flex flex-col gap-2">
@@ -26,24 +25,9 @@ export function ConfigInput({
           {showNodes && field.nodes.length > 0 && (
             <span className="ml-auto flex items-center gap-1">
               <span className="text-xs text-text-secondary">Used in node:</span>
-              {field.nodes.map((node) => {
-                const palette = nodePalette(node, theme);
-                const [h, s, l] = palette.tone;
-                return (
-                  <span
-                    key={node}
-                    title={node}
-                    className="flex size-5 items-center justify-center rounded-full border text-center text-[10px] font-semibold uppercase"
-                    style={{
-                      color: palette.text,
-                      backgroundColor: `hsla(${h}, ${s}%, ${l}%, 0.2)`,
-                      borderColor: palette.border,
-                    }}
-                  >
-                    {node.slice(0, 1)}
-                  </span>
-                );
-              })}
+              {field.nodes.map((node) => (
+                <NodeAvatar key={node} node={node} title={node} />
+              ))}
             </span>
           )}
         </div>
@@ -51,10 +35,10 @@ export function ConfigInput({
       </div>
       {field.options ? (
         <Select value={text} options={field.options} onChange={onChange} />
-      ) : field.type === "number" || field.type === "integer" ? (
+      ) : isNumericType(field.type) ? (
         <input
           type="number"
-          className="w-full rounded-lg border border-border-secondary bg-transparent p-2 px-2.5 text-sm outline-none transition-colors focus:border-border-brand"
+          className="w-full rounded-lg border border-border-secondary bg-transparent p-2 px-2.5 text-sm transition-colors outline-none focus:border-border-brand"
           value={text}
           onChange={(e) => onChange(Number(e.target.value))}
         />
@@ -66,7 +50,7 @@ export function ConfigInput({
       ) : (
         <div className="w-full rounded-lg border border-border-secondary p-2 px-2.5 transition-colors focus-within:border-border-brand">
           <textarea
-            className="m-0 w-full resize-none whitespace-pre-wrap break-words border-none bg-transparent p-0 text-sm outline-none placeholder:text-text-quaternary"
+            className="m-0 w-full resize-none border-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none placeholder:text-text-quaternary"
             rows={field.prompt ? 3 : 1}
             placeholder={field.key}
             value={text}

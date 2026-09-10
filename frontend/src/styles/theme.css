@@ -1,0 +1,70 @@
+/* Tailwind theme: utilities reference the tokens from tokens.css; text scale and radii follow the reference */
+@theme inline {
+  --font-sans:
+    "Inter Variable", Inter, -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-quaternary: var(--bg-quaternary);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-elevated-hover: var(--bg-elevated-hover);
+  --color-bg-brand: var(--bg-brand);
+  --color-bg-brand-hover: var(--bg-brand-hover);
+  --color-bg-brand-secondary: var(--bg-brand-secondary);
+  --color-bg-brand-tertiary: var(--bg-brand-tertiary);
+  --color-bg-control-active: var(--bg-control-active);
+  --color-bg-success-strong: var(--bg-success-strong);
+  --color-bg-error: var(--bg-error);
+  --color-bg-error-secondary: var(--bg-error-secondary);
+  --color-bg-error-subtle: var(--bg-error-subtle);
+
+  --color-border-default: var(--border-default);
+  --color-border-secondary: var(--border-secondary);
+  --color-border-muted: var(--border-muted);
+  --color-border-brand: var(--border-brand);
+  --color-border-outline: var(--border-outline);
+  --color-border-primary-button: var(--border-primary-button);
+  --color-border-slider-thumb: var(--border-slider-thumb);
+  --color-border-error: var(--border-error);
+  --color-border-brand-subtle: var(--border-brand-subtle);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-quaternary: var(--text-quaternary);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-placeholder: var(--text-placeholder);
+  --color-text-brand-primary: var(--text-brand-primary);
+  --color-text-brand-secondary: var(--text-brand-secondary);
+  --color-text-brand-disabled: var(--text-brand-disabled);
+  --color-text-link: var(--text-link);
+  --color-text-error-primary: var(--text-error-primary);
+  --color-text-error-secondary: var(--text-error-secondary);
+  --color-text-error-tertiary: var(--text-error-tertiary);
+
+  /* Studio text scale: their `text-xs` is 13 px, not 12 px as in Tailwind by default.
+     Letter spacing is measured too: 14px/-0.56px and 14px/+0.42px. */
+  --text-xxs: 12px;
+  --text-xs: 13px;
+  /* Line heights are taken from the reference too: 13px gives 18px, 14px gives 20px */
+  --text-xs--line-height: 18px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  /* The reference's `leading-tight` is 1.2 (13px → 15.6px), not Tailwind's default 1.25 */
+  --leading-tight: 1.2;
+  --tracking-snug: -0.02em;
+  --tracking-tighter: -0.04em;
+  --tracking-wide: 0.03em;
+
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-subtle: 0 1px 2px 0 var(--shadow-subtle);
+  --shadow-panel: var(--shadow-lg);
+}

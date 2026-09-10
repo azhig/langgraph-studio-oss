@@ -1,0 +1,123 @@
+/* Components: Studio buttons, editor shell, value highlighting, node hatching */
+@layer components {
+  /* Studio-style button (lc-button): compact, 13px, letter spacing -0.26px */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 13px;
+    line-height: 1.2;
+    letter-spacing: -0.26px;
+    transition:
+      background-color 0.2s,
+      color 0.2s,
+      border-color 0.2s;
+  }
+  .btn-sm {
+    font-size: 14px;
+    line-height: 1.15;
+    letter-spacing: -0.56px;
+    padding: 8px;
+    border-radius: var(--radius-md);
+  }
+  .btn-outline {
+    background: var(--bg-elevated);
+    border-color: var(--border-outline);
+    color: var(--text-secondary);
+    box-shadow: 0 1px 2px 0 var(--shadow-subtle);
+  }
+  .btn-outline:hover {
+    background: var(--bg-elevated-hover);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover {
+    background: color-mix(in srgb, var(--bg-elevated-hover) 80%, transparent);
+  }
+  .btn-brand-outline {
+    background: transparent;
+    color: var(--text-brand-secondary);
+    border-color: var(--border-brand);
+    box-shadow: 0 1px 2px 0 var(--shadow-subtle);
+  }
+  .btn-brand-outline:hover {
+    background: var(--bg-brand-tertiary);
+  }
+  .btn-primary {
+    background: #006ddd;
+    color: #fff;
+    border-color: var(--border-primary-button);
+    box-shadow: 0 1px 2px 0 var(--shadow-subtle);
+  }
+  .btn-primary:hover {
+    background: var(--bg-brand);
+  }
+  .btn-icon {
+    padding: 4px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Value editor: border and background on the container, CodeMirror itself is transparent.
+   Sizes (52 px gutter, 12 px padding, 18.2 px line) are set in CodeEditor.tsx. */
+  .cm-shell {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    cursor: text;
+    overflow: hidden;
+  }
+  .cm-shell .cm-editor {
+    background: transparent;
+  }
+
+  /* Editor with a fixed height: scrolling happens inside, the gutter stays in place */
+  .cm-fixed,
+  .cm-fixed .cm-host,
+  .cm-fixed .cm-editor {
+    height: 100%;
+  }
+
+  /* Value view without the editor: font and palette taken from the reference */
+  .hl {
+    font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px;
+    line-height: 21px;
+    color: var(--code-punct);
+  }
+  .hl-key {
+    color: var(--code-key);
+  }
+  .hl-string {
+    color: var(--code-string);
+  }
+  .hl-literal {
+    color: var(--code-literal);
+  }
+  .hl-dash {
+    color: var(--code-dash);
+  }
+  .hl-punct {
+    color: var(--code-punct);
+  }
+  .hl-comment {
+    color: var(--text-quaternary);
+    font-style: italic;
+  }
+
+  /* Thin scrollbar, as in Studio */
+  .scroll-thin {
+    scrollbar-width: thin;
+  }
+
+  /* Hatching of a paused node: measured on the live Studio */
+  .node-stripes {
+    mix-blend-mode: hard-light;
+    background: repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 20px);
+  }
+}

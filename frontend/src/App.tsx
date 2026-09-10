@@ -18,7 +18,7 @@ export function App() {
     <StreamProvider>
       <div className="flex h-full w-full flex-col overflow-hidden bg-bg-primary text-text-primary">
         {mode === "chat" ? (
-          // Chat mode занимает всё окно: одна шапка, лента и панель тредов справа
+          // Chat mode takes the whole window: one header, the feed, and the thread panel on the right
           <>
             <LeftHeader />
             <div className="flex min-h-0 flex-1 border-t border-border-secondary">
