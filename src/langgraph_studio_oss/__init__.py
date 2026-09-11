@@ -12,4 +12,4 @@ The UI is mounted into your Agent Server and served on the same port:
 from langgraph_studio_oss.app import DEFAULT_PATH, app, mount_studio, studio_routes
 
 __all__ = ["DEFAULT_PATH", "app", "mount_studio", "studio_routes"]
-__version__ = "0.1.1"
+__version__ = "0.1.2"

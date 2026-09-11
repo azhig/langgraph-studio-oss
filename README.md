@@ -65,7 +65,7 @@ The package is not on PyPI yet. Install the wheel from the
 [latest release](https://github.com/azhig/Langgraph-studio-oss/releases):
 
 ```bash
-pip install https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.1-py3-none-any.whl
+pip install https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.2-py3-none-any.whl
 ```
 
 ### Mode 1: mounted into `langgraph dev` (recommended)
@@ -149,7 +149,7 @@ The standalone proxy is also available for Node 18+, with no Python at all. It i
 npm yet; install the tarball from the [latest release](https://github.com/azhig/Langgraph-studio-oss/releases):
 
 ```bash
-npm install -g https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph-studio-oss-0.1.1.tgz
+npm install -g https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph-studio-oss-0.1.2.tgz
 langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
 # → http://127.0.0.1:8100/studio
 ```
