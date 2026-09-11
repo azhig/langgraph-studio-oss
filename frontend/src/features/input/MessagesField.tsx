@@ -123,17 +123,31 @@ function MessageBody({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Write to the DOM only on mismatch: otherwise the cursor jumps on every keystroke
+  // Write to the DOM only on mismatch: otherwise the cursor jumps on every keystroke.
+  // The text always lives in a `<p>` (created on mount, even when empty), so the
+  // browser's first keystroke lands inside it and the comparison below stays stable.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const current = el.querySelector("p")?.textContent ?? "";
+    const p = el.querySelector("p");
+    const current = p ? p.textContent : null;
     const shown = [...el.querySelectorAll("img")].map((img) => img.getAttribute("src") ?? "");
     if (current === text && shown.join(" ") === images.join(" ")) return;
+    const focused = document.activeElement === el;
     el.textContent = "";
-    const p = document.createElement("p");
-    p.textContent = text;
-    el.append(p, ...images.map((url) => Object.assign(document.createElement("img"), { src: url })));
+    const next = document.createElement("p");
+    // An empty block needs a <br> to keep its height and accept the caret
+    if (text) next.textContent = text;
+    else next.append(document.createElement("br"));
+    el.append(next, ...images.map((url) => Object.assign(document.createElement("img"), { src: url })));
+    if (focused) {
+      const range = document.createRange();
+      range.selectNodeContents(next);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
   }, [text, images]);
 
   const read = () => {
