@@ -2,7 +2,7 @@
   "name": "langgraph-studio-unofficial",
   "displayName": "LangGraph Studio (Unofficial)",
   "description": "Unofficial, community-built LangGraph Studio for your local Agent Server: graph, threads, interrupts, assistants and memory. Not affiliated with LangChain, Inc.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "azhig",
   "license": "MIT",
   "private": true,

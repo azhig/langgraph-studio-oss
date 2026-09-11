@@ -1,6 +1,6 @@
 {
   "name": "langgraph-studio-oss",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Unofficial LangGraph Studio for your local Agent Server: serves the UI and proxies the API from one origin. Not affiliated with LangChain, Inc.",
   "license": "MIT",
   "type": "module",
