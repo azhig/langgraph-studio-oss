@@ -16,7 +16,14 @@ beforeAll(async () => {
       req.on("end", () => {
         res.setHeader("content-type", "application/json");
         res.setHeader("x-pagination-total", "1");
-        res.end(JSON.stringify({ method: req.method, body, auth: req.headers.authorization ?? null }));
+        res.end(
+          JSON.stringify({
+            method: req.method,
+            body,
+            auth: req.headers.authorization ?? null,
+            custom: req.headers["x-custom"] ?? null,
+          }),
+        );
       });
       return;
     }
@@ -60,12 +67,23 @@ describe("Relay", () => {
   it("forwards method, body, request and settings headers, and returns response headers", async () => {
     const { out, done, send } = collect();
     const relay = new Relay({ target: () => target, headers: () => ({ authorization: "Bearer t" }), send });
-    relay.handle({ type: "fetch", id: 1, method: "POST", path: "/echo", headers: [["content-type", "application/json"]], body: "{}" });
+    relay.handle({
+      type: "fetch",
+      id: 1,
+      method: "POST",
+      path: "/echo",
+      // `x-custom` comes from the dialog inside the webview, `authorization` from the settings
+      headers: [
+        ["content-type", "application/json"],
+        ["x-custom", "from-webview"],
+      ],
+      body: "{}",
+    });
     const messages = await done;
     expect(messages[0]).toMatchObject({ type: "response", id: 1, status: 200 });
     const headers = Object.fromEntries((messages[0] as Extract<ToWebview, { type: "response" }>).headers);
     expect(headers["x-pagination-total"]).toBe("1");
-    expect(JSON.parse(text(messages))).toEqual({ method: "POST", body: "{}", auth: "Bearer t" });
+    expect(JSON.parse(text(messages))).toEqual({ method: "POST", body: "{}", auth: "Bearer t", custom: "from-webview" });
   });
 
   it("streams SSE in chunks without waiting for the end of the response", async () => {
@@ -89,6 +107,13 @@ describe("Relay", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(streamClosed).toBe(true);
     expect(out.some((m) => m.type === "error")).toBe(false);
+  });
+
+  it("a request header wins over the same header from the settings", async () => {
+    const { done, send } = collect();
+    const relay = new Relay({ target: () => target, headers: () => ({ "x-custom": "from-settings" }), send });
+    relay.handle({ type: "fetch", id: 5, method: "POST", path: "/echo", headers: [["x-custom", "from-webview"]], body: "{}" });
+    expect(JSON.parse(text(await done)).custom).toBe("from-webview");
   });
 
   it("an unreachable server yields `error`", async () => {

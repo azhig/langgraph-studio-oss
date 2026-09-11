@@ -34,7 +34,15 @@ def upstream_app() -> Starlette:
 
     async def echo(request: Request) -> Response:
         body = await request.body()
-        return JSONResponse({"method": request.method, "body": body.decode(), "query": request.url.query})
+        return JSONResponse(
+            {
+                "method": request.method,
+                "body": body.decode(),
+                "query": request.url.query,
+                "auth": request.headers.get("authorization"),
+                "custom": request.headers.get("x-custom"),
+            }
+        )
 
     return Starlette(
         routes=[
@@ -59,6 +67,13 @@ def client() -> TestClient:
 
 def test_studio_page_served_by_proxy(client: TestClient) -> None:
     assert client.get("/studio/").status_code == 200
+
+
+def test_custom_request_headers_reach_the_server(client: TestClient) -> None:
+    """Headers from the `Configure Studio connection` dialog must survive the proxy."""
+    response = client.post("/echo", json={}, headers={"authorization": "Bearer t", "x-custom": "value"})
+    assert response.json()["auth"] == "Bearer t"
+    assert response.json()["custom"] == "value"
 
 
 def test_pagination_headers_pass_through(client: TestClient) -> None:
@@ -100,4 +115,5 @@ def test_target_is_persisted(tmp_path) -> None:
 
 def test_method_body_and_query_forwarded(client: TestClient) -> None:
     response = client.post("/echo?limit=5", content=b"hello")
-    assert response.json() == {"method": "POST", "body": "hello", "query": "limit=5"}
+    echoed = response.json()
+    assert (echoed["method"], echoed["body"], echoed["query"]) == ("POST", "hello", "limit=5")

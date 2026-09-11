@@ -25,17 +25,29 @@ export interface CustomHeader {
 
 export const readCustomHeaders = (): CustomHeader[] => readJson<CustomHeader[]>(storageKeys.customHeaders, []);
 
+/**
+ * Headers handed to the SDK. The object is always the same one: the client merges it into
+ * every request as it is made, so headers saved in the dialog reach even a client that some
+ * component is still holding on to (the run stream keeps one between renders).
+ */
+const defaultHeaders: Record<string, string> = {};
+
+function headersRecord(): Record<string, string> {
+  for (const key of Object.keys(defaultHeaders)) delete defaultHeaders[key];
+  for (const h of readCustomHeaders()) if (h.name.trim()) defaultHeaders[h.name.trim()] = h.value;
+  return defaultHeaders;
+}
+
 /** Headers go with every request: a server behind authentication would not respond otherwise. */
 export function saveCustomHeaders(headers: CustomHeader[]): void {
   writeJson(
     storageKeys.customHeaders,
     headers.filter((h) => h.name.trim()),
   );
+  // Refills the object the existing clients read from, so the next request already carries the headers
+  headersRecord();
   client = null;
 }
-
-const headersRecord = (): Record<string, string> =>
-  Object.fromEntries(readCustomHeaders().map((h) => [h.name.trim(), h.value]));
 
 let client: Client | null = null;
 
@@ -67,6 +79,12 @@ export interface Connection {
   /** `proxy` and `vscode` allow changing the address: the host switches it, not the browser. */
   mode: "mounted" | "proxy" | "vscode";
   target: string | null;
+  /**
+   * VS Code keeps custom headers in its own settings, and the extension adds them to every
+   * request itself. Only that mode reports them, so the dialog edits the settings
+   * instead of a copy the webview would lose on restart.
+   */
+  headers?: CustomHeader[];
 }
 
 /** The UI's service route lives next to the page, not in the server API. */
@@ -75,7 +93,7 @@ const studioUrl = (rel: string) => new URL(rel, window.location.href).toString()
 export const fetchConnection = async (): Promise<Connection> => {
   if (currentHost() === "vscode") {
     const c = await hostBridge().connection();
-    return { mode: "vscode", target: c.target };
+    return { mode: "vscode", target: c.target, headers: c.headers.map(([name, value]) => ({ name, value })) };
   }
   const res = await fetch(studioUrl("api/connection"));
   if (!res.ok) throw new Error(`GET api/connection → ${res.status}`);

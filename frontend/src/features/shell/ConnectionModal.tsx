@@ -58,6 +58,8 @@ function ConnectionForm({ onClose }: { onClose: () => void }) {
         if (stale) return;
         setConnection(c);
         setTarget(c.target ?? apiRoot());
+        // In VS Code the headers live in the extension settings: show those, not the webview copy
+        if (c.headers) setHeaders(c.headers);
       })
       .catch(() => {
         if (!stale) setConnection({ mode: "mounted", target: null });
@@ -74,8 +76,10 @@ function ConnectionForm({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(undefined);
     try {
-      if (proxy && target.trim() !== connection?.target) await updateConnectionTarget(target.trim());
+      // Headers first: in VS Code they are sent to the host together with the address
       saveCustomHeaders(headers);
+      if (proxy && (target.trim() !== connection?.target || connection?.mode === "vscode"))
+        await updateConnectionTarget(target.trim());
       onClose();
       // New address or headers mean a new client: re-read the server, assistants and graph
       void bootstrap();
