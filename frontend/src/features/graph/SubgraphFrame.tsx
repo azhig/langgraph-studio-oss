@@ -5,6 +5,7 @@ import { useRun } from "@/store/run";
 import { HoverCard } from "@/components/HoverCard";
 import { CollapseGlyph, ExpandGlyph, SubgraphGlyph } from "@/components/icons/SubgraphGlyphs";
 import { NodeHoverCard } from "./NodeHoverCard";
+import { matchesHover } from "./layout";
 import type { NodePalette } from "./colors";
 
 export interface SubgraphFrameData extends Record<string, unknown> {
@@ -23,8 +24,10 @@ export type SubgraphFlowNode = Node<SubgraphFrameData, "subgraph">;
 function SubgraphFrameComponent({ id, data }: NodeProps<SubgraphFlowNode>) {
   const { name, palette } = data;
   const toggleSubgraph = useStudio((s) => s.toggleSubgraph);
+  // The frame keeps its full color while the record of the subgraph or of a node inside it
+  // is hovered; only the nodes themselves are raised, as in the reference
   const dimmed = useRun((s) => {
-    if (s.hoverNode) return s.hoverNode !== id;
+    if (s.hoverNode) return !matchesHover(s.hoverNode, id);
     return Boolean(s.activeNode) || Boolean(s.errorNode);
   });
 

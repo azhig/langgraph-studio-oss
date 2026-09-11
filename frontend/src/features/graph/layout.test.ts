@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { AssistantGraph } from "@langchain/langgraph-sdk";
-import { collapseSubgraphs, layoutGraph, nodeWidth, shortName, subgraphOf, userNodeIds } from "./layout";
+import {
+  collapseSubgraphs,
+  layoutGraph,
+  matchesHover,
+  nodeWidth,
+  parentSubgraph,
+  shortName,
+  subgraphOf,
+  userNodeIds,
+} from "./layout";
 
 const node = (id: string) => ({ id, type: "runnable", data: { id: [id], name: id } });
 const edge = (source: string, target: string, conditional = false) => ({ source, target, conditional });
@@ -13,6 +22,27 @@ const AGENT: AssistantGraph = {
     edge("agent", "action", true),
     edge("action", "agent"),
     edge("agent", "__end__", true),
+  ],
+};
+
+/** Graph with a subgraph inside a subgraph: `mid` holds `mid:leaf`. */
+const DEEP: AssistantGraph = {
+  nodes: [
+    node("__start__"),
+    node("top"),
+    node("mid:mid_start"),
+    node("mid:leaf:leaf_one"),
+    node("mid:leaf:leaf_two"),
+    node("bottom"),
+    node("__end__"),
+  ],
+  edges: [
+    edge("__start__", "top"),
+    edge("top", "mid:mid_start"),
+    edge("mid:mid_start", "mid:leaf:leaf_one"),
+    edge("mid:leaf:leaf_one", "mid:leaf:leaf_two"),
+    edge("mid:leaf:leaf_two", "bottom"),
+    edge("bottom", "__end__"),
   ],
 };
 
@@ -45,6 +75,21 @@ describe("node names", () => {
     expect(subgraphOf("worker:prepare")).toBe("worker");
     expect(subgraphOf("agent")).toBeUndefined();
     expect(shortName("worker:prepare")).toBe("prepare");
+  });
+
+  it("a hovered log record matches its node, the nodes inside it and the node it hides in", () => {
+    // a plain record
+    expect(matchesHover("agent", "agent")).toBe(true);
+    expect(matchesHover("agent", "tools")).toBe(false);
+    // the subgraph record raises every node of the expanded subgraph, but not its neighbours
+    expect(matchesHover("worker", "worker:prepare")).toBe(true);
+    expect(matchesHover("worker", "worker")).toBe(true);
+    expect(matchesHover("worker", "workers")).toBe(false);
+    // a nested record raises its own node, and the subgraph while it is collapsed
+    expect(matchesHover("worker:prepare", "worker:prepare")).toBe(true);
+    expect(matchesHover("worker:prepare", "worker")).toBe(true);
+    expect(matchesHover("worker:prepare", "worker:finish")).toBe(false);
+    expect(matchesHover(undefined, "worker")).toBe(false);
   });
 
   it("userNodeIds drops system nodes", () => {
@@ -88,6 +133,64 @@ describe("subgraphs", () => {
       "worker>done",
       "done>__end__",
     ]);
+  });
+
+  it("a subgraph inside a subgraph collapses into the outermost one that is closed", () => {
+    const subgraphs = ["mid", "mid:leaf"];
+    // Nothing expanded: only the outer node is left
+    expect(collapseSubgraphs(DEEP, subgraphs, []).nodes.map((n) => n.id)).toEqual([
+      "__start__",
+      "top",
+      "mid",
+      "bottom",
+      "__end__",
+    ]);
+    // The outer one is open, the inner one still stands for its nodes
+    expect(collapseSubgraphs(DEEP, subgraphs, ["mid"]).nodes.map((n) => n.id)).toEqual([
+      "__start__",
+      "top",
+      "mid:mid_start",
+      "mid:leaf",
+      "bottom",
+      "__end__",
+    ]);
+    // Both open: every node is its own
+    expect(collapseSubgraphs(DEEP, subgraphs, subgraphs).nodes.map((n) => n.id)).toEqual([
+      "__start__",
+      "top",
+      "mid:mid_start",
+      "mid:leaf:leaf_one",
+      "mid:leaf:leaf_two",
+      "bottom",
+      "__end__",
+    ]);
+    expect(parentSubgraph("mid:leaf:leaf_one", subgraphs)).toBe("mid:leaf");
+    expect(parentSubgraph("mid:mid_start", subgraphs)).toBe("mid");
+    expect(parentSubgraph("top", subgraphs)).toBeUndefined();
+    expect(shortName("mid:leaf:leaf_one")).toBe("leaf_one");
+  });
+
+  it("nested frames enclose one another and each boundary spreads the rows by 25 px", () => {
+    const subgraphs = ["mid", "mid:leaf"];
+    const g = collapseSubgraphs(DEEP, subgraphs, subgraphs);
+    const { nodes, groups } = layoutGraph(g, subgraphs, subgraphs);
+    expect(groups.map((f) => f.id)).toEqual(["mid", "mid:leaf"]);
+    const [outer, leaf] = groups;
+    const leafNodes = nodes.filter((n) => n.id.startsWith("mid:leaf:"));
+    // The inner frame hugs its own nodes
+    expect(leaf.x).toBe(Math.min(...leafNodes.map((n) => n.x)) - 35);
+    expect(leaf.y).toBe(Math.min(...leafNodes.map((n) => n.y)) - 25);
+    // and lies inside the outer one, which also holds the node next to it
+    expect(outer.x).toBeLessThanOrEqual(leaf.x - 35);
+    expect(outer.y).toBeLessThanOrEqual(leaf.y - 25);
+    expect(outer.x + outer.width).toBeGreaterThanOrEqual(leaf.x + leaf.width + 35);
+    expect(outer.y + outer.height).toBe(leaf.y + leaf.height + 25);
+    // Two boundaries between `top` and the deepest node: 82 + 25 + 25 + 82
+    const top = nodes.find((n) => n.id === "top")!;
+    expect(leafNodes[0].y - top.y).toBe(214);
+    // and two more below it, before the node after the subgraph
+    const bottom = nodes.find((n) => n.id === "bottom")!;
+    expect(bottom.y - leafNodes[1].y).toBe(132);
   });
 
   it("an expanded subgraph keeps its nodes and gets a frame with 35/25 padding", () => {

@@ -15,6 +15,12 @@ export interface LogSlice {
   running: boolean;
   /** Log detail level; remembered across sessions, as in the reference. */
   detail: Detail;
+  /**
+   * Bumped every time the level re-applies its own defaults to the records. Levels 0-2 do that
+   * (a record collapsed by hand opens again), the top level only expands values, so records
+   * keep whatever the user did to them — this is what the reference does.
+   */
+  recordsEpoch: number;
   /** Input of the current run: shown as a `__start__` record after the first checkpoint. */
   pendingStart?: Record<string, unknown>;
   /** The node executing right now: it stays bright, the rest dim. */
@@ -60,6 +66,7 @@ export const createLogSlice: StateCreator<LogSlice, [], [], LogSlice> = (set) =>
   entries: [],
   running: false,
   detail: readDetail(),
+  recordsEpoch: 0,
 
   addCheckpoint: ({ checkpointId, values, source }) =>
     set((s) => {
@@ -110,7 +117,7 @@ export const createLogSlice: StateCreator<LogSlice, [], [], LogSlice> = (set) =>
 
   setDetail: (detail) => {
     writeString(storageKeys.detailLevel, String(detail));
-    set({ detail });
+    set((state) => ({ detail, recordsEpoch: state.recordsEpoch + (detail < 3 ? 1 : 0) }));
   },
 
   setError: (message) => set((s) => ({ error: message, errorNode: message ? s.activeNode : undefined })),

@@ -30,6 +30,7 @@ export function NodeRecord({
   canContinue = false,
   depth = 0,
   lastOfTurn = false,
+  path = "",
 }: {
   entry: NodeEntry;
   defaultOpen: boolean;
@@ -38,14 +39,18 @@ export function NodeRecord({
   lastOfTurn?: boolean;
   /** Nesting depth: subgraph records stick below the parent row. */
   depth?: number;
+  /** Subgraph nodes this record sits under, as the canvas names them (`worker`). */
+  path?: string;
 }) {
   // An interrupt awaits a reply only at the last checkpoint of the thread: in earlier records
   // it is already closed, and the reply form should not be shown
   const headCheckpointId = useStudioStream().headCheckpointId;
   const active = Boolean(entry.checkpointId && entry.checkpointId === headCheckpointId);
   // Until the record is touched manually it follows the reference rule: input and
-  // the last step are expanded, the rest collapse as new records appear.
-  const [manual, setManual] = useState<boolean | null>(null);
+  // the last step are expanded, the rest collapse as new records appear. Moving the detail
+  // level to 0-2 re-applies its defaults and forgets the manual state, as the reference does.
+  const epoch = useRun((s) => s.recordsEpoch);
+  const [manual, setManual] = useResettableState<boolean | null>(null, epoch);
   const [editing, setEditing] = useState(false);
   const editor = useNodeStateEditor(entry, () => setEditing(false));
   const open = manual ?? defaultOpen;
@@ -53,19 +58,24 @@ export function NodeRecord({
   const content = Object.entries(entry.updates ?? {});
   const system = entry.node === "__start__";
 
-  // Hovering a record highlights its node on the canvas and dims the rest — as in the reference
+  // Hovering a record highlights its node on the canvas and dims the rest — as in the reference.
+  // Records of a subgraph name their node the way the canvas does, `<subgraph>:<node>`,
+  // otherwise a nested step would match nothing and the whole graph would go dim.
+  const nodeId = path ? `${path}:${entry.node}` : entry.node;
   const setHoverNode = useRun((s) => s.setHoverNode);
-  const isSubgraph = useStudio((s) => s.subgraphs.includes(entry.node));
-  // Subgraph steps in the log expand independently of the frame on the canvas
-  // Changing the detail level collapses the steps again, as in the reference
-  const detail = useRun((s) => s.detail);
-  const [steps, setSteps] = useResettableState(false, detail);
+  const setSubgraphExpanded = useStudio((s) => s.setSubgraphExpanded);
+  // A record backed by a subgraph carries its namespace: that also holds for a subgraph
+  // nested in a subgraph, which the assistant's top-level list does not mention
+  const isSubgraph = Boolean(entry.subgraphNs);
+  // Open subgraph steps survive a change of the detail level: the reference only forgets them
+  // at level 0, where the log is replaced by the turn summary and the records unmount
+  const [steps, setSteps] = useState(false);
   const sticky = { top: stickyTop(depth), zIndex: stickyZ(depth) };
 
   return (
     <div
       className={cx("flex flex-col gap-2 bg-bg-primary py-1.5", !depth && "px-6")}
-      onMouseEnter={() => !system && setHoverNode(entry.node)}
+      onMouseEnter={() => setHoverNode(nodeId)}
       onMouseLeave={() => setHoverNode(undefined)}
     >
       <div className="relative mr-4 grid grid-cols-[auto_1fr] gap-x-3">
@@ -89,14 +99,20 @@ export function NodeRecord({
               {open ? <ChevronDown size={16} strokeWidth={1.5} /> : <ChevronRight size={16} strokeWidth={1.5} />}
             </button>
             {isSubgraph ? (
-              // Subgraph node: an icon to the right of the name; clicking expands and collapses
-              // the subgraph steps in the log, as in the reference
+              // Subgraph node: an icon to the right of the name; clicking opens its steps in the
+              // log and unfolds the same subgraph on the canvas. The reference toggles the canvas
+              // independently, so a subgraph opened on the canvas collapses when the log opens its
+              // steps; here the two always agree.
               <button
                 type="button"
                 aria-label={steps ? "Hide subgraph steps" : "See subgraph steps"}
                 title={steps ? "Hide subgraph steps" : "See subgraph steps"}
                 className="inline-flex cursor-pointer items-center gap-1.5 self-start rounded"
-                onClick={() => setSteps((v) => !v)}
+                onClick={() => {
+                  const next = !steps;
+                  setSteps(next);
+                  setSubgraphExpanded(nodeId, next);
+                }}
               >
                 <span className="text-sm leading-[1.15] font-medium tracking-tighter">{entry.node}</span>
                 {steps ? (
@@ -125,7 +141,7 @@ export function NodeRecord({
             )}
           </div>
           {editing && editor.body}
-          {steps && entry.subgraphNs && <SubgraphLog ns={entry.subgraphNs} depth={depth + 1} />}
+          {steps && entry.subgraphNs && <SubgraphLog ns={entry.subgraphNs} depth={depth + 1} path={nodeId} />}
           {!editing && open && content.length > 0 && <Updates updates={entry.updates} />}
           {entry.error && <ErrorBlock message={entry.error} />}
           {active &&
@@ -143,7 +159,7 @@ export function NodeRecord({
  * `checkpoint.checkpoint_ns`. Records are drawn with the same components as the top
  * level, but stick one step lower.
  */
-function SubgraphLog({ ns, depth }: { ns: string; depth: number }) {
+function SubgraphLog({ ns, depth, path }: { ns: string; depth: number; path: string }) {
   const threadId = useStudioStream().threadId;
   const detail = useRun((s) => s.detail);
   const [entries, setEntries] = useState<LogEntry[]>([]);
@@ -174,6 +190,7 @@ function SubgraphLog({ ns, depth }: { ns: string; depth: number }) {
             key={e.key}
             entry={e}
             depth={depth}
+            path={path}
             // Nested records follow the level only: all collapsed below 2, all open from 2
             defaultOpen={detail >= 2}
           />

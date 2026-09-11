@@ -8,7 +8,7 @@ import { HoverCard } from "@/components/HoverCard";
 import { NodeConfigModal } from "@/features/assistants/NodeConfigModal";
 import { NodeHoverCard } from "./NodeHoverCard";
 import { SubgraphIcon } from "./SubgraphFrame";
-import { subgraphOf } from "./layout";
+import { matchesHover, subgraphOf } from "./layout";
 import { isSystemNode, type NodePalette } from "./colors";
 
 export type NodeStatus = "idle" | "active" | "error";
@@ -53,9 +53,9 @@ function GraphNodeComponent({ id, data }: NodeProps<GraphFlowNode>) {
   // The highlight extends to the whole subgraph: a `worker` entry in the log raises
   // both the frame and the nested nodes, as the reference does
   const parent = subgraphOf(id);
-  const hovered = useRun((s) => s.hoverNode === id || (parent !== undefined && s.hoverNode === parent));
+  const hovered = useRun((s) => matchesHover(s.hoverNode, id));
   const dimmed = useRun((s) => {
-    if (s.hoverNode) return s.hoverNode !== id && s.hoverNode !== parent;
+    if (s.hoverNode) return !matchesHover(s.hoverNode, id);
     if (s.activeNode) return s.activeNode !== id;
     if (s.errorNode) return s.errorNode !== id;
     return false;

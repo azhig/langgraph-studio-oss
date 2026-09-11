@@ -48,6 +48,8 @@ export interface StudioState {
   /** Which subgraphs are currently expanded. */
   expandedSubgraphs: string[];
   toggleSubgraph: (node: string) => void;
+  /** Open or close a subgraph explicitly: the log opens it together with its steps. */
+  setSubgraphExpanded: (node: string, expanded: boolean) => void;
   /** Collapse all subgraphs — this is what `Reset layout to default` does. */
   collapseSubgraphs: () => void;
   schemas?: GraphSchema;
@@ -106,6 +108,15 @@ export const useStudio = create<StudioState>((set, get) => ({
   assistants: [],
   subgraphs: [],
   expandedSubgraphs: [],
+  setSubgraphExpanded: (node, expanded) =>
+    set((s) => ({
+      expandedSubgraphs: expanded
+        ? s.expandedSubgraphs.includes(node)
+          ? s.expandedSubgraphs
+          : [...s.expandedSubgraphs, node]
+        : s.expandedSubgraphs.filter((n) => n !== node),
+    })),
+
   toggleSubgraph: (node) =>
     set((s) => ({
       expandedSubgraphs: s.expandedSubgraphs.includes(node)
@@ -169,7 +180,8 @@ export const useStudio = create<StudioState>((set, get) => ({
     set({
       graph,
       xrayGraph,
-      subgraphs: Object.keys(subgraphs ?? {}),
+      // The server separates nesting levels with `|`, the canvas with `:` — one shape for both
+      subgraphs: Object.keys(subgraphs ?? {}).map((id) => id.replace(/\|/g, ":")),
       schemas,
       config: { ...defaultConfig(schemas), ...saved },
     });

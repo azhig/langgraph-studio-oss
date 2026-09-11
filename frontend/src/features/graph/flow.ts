@@ -2,7 +2,7 @@ import type { AssistantGraph, GraphSchema } from "@langchain/langgraph-sdk";
 import type { Theme } from "@/store/studio";
 import type { JsonSchema } from "@/lib/schema";
 import { nodePalette } from "./colors";
-import { collapseSubgraphs, layoutGraph, shortName, subgraphOf } from "./layout";
+import { collapseSubgraphs, layoutGraph, parentSubgraph, shortName } from "./layout";
 import type { GraphFlowEdge } from "./GraphEdge";
 import type { GraphFlowNode } from "./GraphNode";
 import type { SubgraphFlowNode } from "./SubgraphFrame";
@@ -51,9 +51,10 @@ export function buildFlow(
   expanded: string[],
 ): FlowModel {
   const visible = collapseSubgraphs(graph, subgraphs, expanded);
-  const layout = layoutGraph(visible, expanded);
+  const layout = layoutGraph(visible, expanded, subgraphs);
   // The reference keeps the frame of an expanded subgraph where the collapsed node stood,
-  // so the group is shifted by the difference from the fully collapsed layout
+  // so the group is shifted by the difference from the fully collapsed layout; everything
+  // inside it — nodes and the frames of nested subgraphs — moves along
   if (layout.groups.length) {
     const collapsed = layoutGraph(collapseSubgraphs(graph, subgraphs, []));
     for (const g of layout.groups) {
@@ -62,16 +63,28 @@ export function buildFlow(
       const dx = was.x - g.x;
       if (!dx) continue;
       g.x += dx;
-      for (const n of layout.nodes) if (subgraphOf(n.id) === g.id) n.x += dx;
+      for (const n of layout.nodes) if (n.id.startsWith(`${g.id}:`)) n.x += dx;
+      for (const inner of layout.groups) if (inner.id.startsWith(`${g.id}:`)) inner.x += dx;
     }
   }
   const neighbours = neighbourhood(visible);
+
+  const frameById = new Map(layout.groups.map((g) => [g.id, g]));
+  const frameIds = layout.groups.map((g) => g.id);
+  /** Frame the element is drawn in: React Flow positions it relative to that frame. */
+  const frameOf = (id: string) => frameById.get(parentSubgraph(id, frameIds) ?? "");
 
   // Frames of expanded subgraphs go first: React Flow requires the parent before its children
   const frames: SubgraphFlowNode[] = layout.groups.map((g) => ({
     id: g.id,
     type: "subgraph",
-    position: { x: g.x, y: g.y },
+    // A subgraph inside a subgraph is bound to the outer frame, like the nodes
+    parentId: frameOf(g.id)?.id,
+    extent: frameOf(g.id) ? ("parent" as const) : undefined,
+    position: (() => {
+      const outer = frameOf(g.id);
+      return outer ? { x: g.x - outer.x, y: g.y - outer.y } : { x: g.x, y: g.y };
+    })(),
     width: g.width,
     height: g.height,
     connectable: false,
@@ -85,16 +98,15 @@ export function buildFlow(
     // under the canvas. A negative z-index would sink it below the `pane` layer,
     // and then neither clicks on the frame nor dragging the canvas would work together.
     zIndex: 0,
-    data: { name: g.name, palette: nodePalette(g.id, theme) },
+    // The heading and the tone follow the short name, as for a nested node
+    data: { name: shortName(g.name), palette: nodePalette(shortName(g.name), theme) },
   }));
-  const frameById = new Map(layout.groups.map((g) => [g.id, g]));
-
   const nodes: (GraphFlowNode | SubgraphFlowNode)[] = [
     ...frames,
     ...layout.nodes.map((n): GraphFlowNode => {
       // A node inside an expanded subgraph is bound to its frame: it moves with it
       // and cannot leave its bounds (`extent: "parent"`), as in the reference.
-      const frame = frameById.get(subgraphOf(n.id) ?? "");
+      const frame = frameOf(n.id);
       return {
         id: n.id,
         type: "studio",

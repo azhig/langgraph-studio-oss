@@ -316,13 +316,26 @@ Card header: `Input`, `↑ ↓` arrows (history of submitted values),
 
 ### Detail slider
 
-A slider in the top-right corner (`absolute right-0 top-[80px] w-[120px]`) switches between three log views:
+A slider in the top-right corner (`absolute right-0 top-[75px] w-[120px] px-4`, 16 px row so the tooltip hangs
+off the thumb) switches between the log views. Its track is 88×6 and the thumb travels `88 - 16 = 72 px`:
+at the ends the thumb's edge lines up with the track's instead of hanging over it, while the filled part is
+the plain percentage (0 / 29.3 / 58.7 / 88 px for four levels). A graph with subgraphs gets a fourth level:
 
 | Level | What is shown |
 |---|---|
 | 0 | Turn summary: `Input` and `Output` labels with values, no nodes or times. Values are rendered with the same tree as in a node entry: messages as "role + text" cards, but without a bubble; container `line-clamp-1` |
 | 1 (default) | Node entries; exactly two are expanded — the input (`__start__`) and the last entry of the turn; the rest are collapsed regardless of what they recorded |
 | 2 | The same entries, all expanded |
+| 3 (only with subgraphs) | The same as 2; nested subgraph records open from this level |
+
+Moving the slider also decides what survives:
+
+| Move | What happens to the records |
+|---|---|
+| to 0, 1 or 2 | the level's own defaults are re-applied: a record collapsed or expanded by hand goes back to what the level says |
+| to the top level (3) | records are left as they are — it only expands values, so a manual collapse survives |
+| any move between 1, 2 and 3 | open subgraph steps stay open; at level 1 their nested records are shown collapsed |
+| through 0 | the log is replaced by the turn summary, so the records unmount and open subgraph steps are forgotten |
 
 ### Execution errors
 
@@ -357,7 +370,7 @@ with a `Review` button on the right — it expands this turn in detail without t
 | Name in the card | chip 14px/500 `px-2 py-1`, node tone colors (bg — tone with alpha 0.15), radius 6 (a ring for service nodes) |
 | Neighbor rows | grid `grid-cols-[auto,1fr] gap-x-3 gap-y-2`; `Source` / `Target` labels — 14px `--text-tertiary` with a 12 px margin; neighbor chips — 12px |
 | Checkboxes in the card | after a `border-t`, `px-3 pt-1 -mb-2 mt-3`, 16 px square (radius 4) and a 12px `--text-tertiary` label, 8 px gap; checked — border `--bg-brand`, fill `--bg-brand-tertiary`, lucide `Check` checkmark 16 px with stroke 2 (the `Interrupts` menu uses the same square, 6 px gap) |
-| Highlighting from the log | hovered node — `opacity: 1` and `scale(1.05)`, the others — `opacity: 0.3` (0.1 during a run); for a subgraph both the frame and the nested nodes are highlighted |
+| Highlighting from the log | hovered node — `opacity: 1` and `scale(1.05)`, the others — `opacity: 0.3` (0.1 during a run); a subgraph record raises all of its nodes, a nested record only its own (the sibling nested nodes go dim), and while the subgraph is collapsed the nested record raises the node standing for it; the frame is never scaled and stays at `opacity: 1` for any record of its own |
 | Nested node card | short name and neighbors, no interrupt checkboxes |
 
 ### Subgraphs
@@ -369,8 +382,12 @@ with a `Review` button on the right — it expands this turn in detail without t
 | Frame heading | 16 px icon and 13px/500 name in the tone color, 8 px top margin |
 | Nested nodes | labeled without the subgraph prefix, the tone is computed from the short name |
 | Layout | rows are spread apart by 25 px around the frame: the row pitch at its boundary is 107 px instead of 82 px |
-| Log entry | 20 px square avatar (radius 4) with a 12 px icon instead of a letter; to the right of the name — a 24 px button (`p-1`, radius 6), hidden until the row is hovered |
+| Log entry | 20 px square avatar (radius 4) with a 12 px icon instead of a letter; to the right of the name — a 24 px button (`p-1`, radius 6), hidden until the row is hovered; the name and the button are one control: it opens the steps in the log and unfolds the same subgraph on the canvas |
 | Nested log | inside the expanded entry: subgraph checkpoints and nodes as regular components, sticky headings at `top: 70px`, `z-index: 4` |
+| Subgraph in a subgraph | the inner one is a collapsed node inside the outer frame until it is opened; its record in the log behaves like any other subgraph record — the title opens its steps and unfolds the same subgraph on the canvas |
+| Nested frames | the inner frame hugs its own nodes with the same 35/25 padding, and every boundary spreads the rows by another 25 px (`top` to the deepest node: 82 + 25 + 25 + 82) |
+| Deviation | the reference does not widen the outer frame around the inner one, so the inner frame hangs over its right edge; we enclose it instead |
+| Deviation | the reference's log title toggles the canvas independently of the steps, so a subgraph opened on the canvas collapses when the log opens its steps; we set the canvas to whatever the log shows, so the two never contradict each other |
 
 ### Interrupts
 
@@ -447,7 +464,9 @@ with a `Review` button on the right — it expands this turn in detail without t
 ### Hover tooltips
 
 The reference draws them with its own component, not the native `title`: delay ≈700 ms, card
-`rounded-md p-2 text-sm` on `--bg-elevated` with a shadow, below the element.
+`max-w-[320px] rounded-md border p-2` on `--bg-elevated`, text 13px/1.2 `-0.02em`, 5 px away from the element.
+The reference puts the header ones above the trigger because its own app chrome sits over the page; our header
+touches the top of the window, so they open below it.
 
 | Where | Text |
 |---|---|
@@ -501,7 +520,7 @@ over the page (`z-index: 1300`) — the interface panels clip their content by `
 | `Input` heading | 20px/600, line-height 30, tracking -0.8px |
 | Field row | `-mx-2 grid grid-cols-[1fr,auto] gap-4 p-2`: 20 px icon + 16px/500 capitalize name; `Required` badge — `rounded-md border px-1 py-0.5` 14px |
 | Editor | `rounded-md border` frame; 42 px area, 52 px gutter, font 13px/18.2px `"Fira Code", monospace`; 35 px bottom bar on `--bg-surface-level-2` with a `YAML ▾` button (26 px) and `RAW` + copy |
-| Detail slider | `absolute right-0 top-[80px] w-[120px] px-4`; track `h-1.5 rounded-full` on `--bg-surface-level-4`, fill `--bg-control-active`, 16 px white thumb with a 2 px border |
+| Detail slider | `absolute right-0 top-[75px] w-[120px] px-4`; track `h-1.5 rounded-full` (88×6) on `--bg-surface-level-4`, fill `--bg-control-active` by plain percentage, 16 px white thumb with a 2 px `#0078f1` border (the same in both themes), travelling `track - 16 px`; base shadow `0 1px 3px #0000001a, 0 1px 2px -1px #0000001a`, on `focus-visible` a `ring-2 ring-offset-1` in `--bg-control-active` |
 | Empty state | 56 px square `rounded-xl border` with an icon, heading 20px/600, caption 16px `--text-tertiary` |
 
 The `Chat` tab is active only if the `messages` field in the input schema is typed with LangChain messages

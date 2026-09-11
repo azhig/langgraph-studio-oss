@@ -62,12 +62,33 @@ export interface Layout {
   groups: LaidOutGroup[];
 }
 
+/** `inner` lies inside `outer` on the canvas: `worker:prepare` inside `worker`. */
+const isInside = (inner: string, outer: string): boolean => inner.startsWith(`${outer}:`);
+
+/** Subgraphs the node lies in, outermost first: `mid`, `mid:leaf` for `mid:leaf:leaf_one`. */
+const ancestors = (id: string, subgraphs: string[]): string[] =>
+  subgraphs.filter((s) => isInside(id, s)).sort((a, b) => a.length - b.length);
+
+/**
+ * The subgraph the node is drawn inside: the deepest one, since only that frame is
+ * visible when every subgraph above it is expanded too.
+ */
+export const parentSubgraph = (id: string, subgraphs: string[]): string | undefined => ancestors(id, subgraphs).at(-1);
+
 /** The node belongs to a subgraph: the server names its nested nodes `<subgraph>:<node>`. */
 export const subgraphOf = (id: string): string | undefined =>
   id.includes(":") ? id.slice(0, id.indexOf(":")) : undefined;
 
-/** Short name of a nested node: the reference labels them without the subgraph prefix. */
-export const shortName = (id: string): string => (id.includes(":") ? id.slice(id.indexOf(":") + 1) : id);
+/**
+ * The hovered log record points at this node. The reference highlights the node itself, the
+ * nodes of a hovered subgraph, and — while the subgraph is collapsed — the node standing for
+ * a nested record.
+ */
+export const matchesHover = (hoverNode: string | undefined, id: string): boolean =>
+  hoverNode !== undefined && (hoverNode === id || isInside(hoverNode, id) || isInside(id, hoverNode));
+
+/** Short name of a nested node: the reference labels them without the subgraph prefixes. */
+export const shortName = (id: string): string => (id.includes(":") ? id.slice(id.lastIndexOf(":") + 1) : id);
 
 /** Graph nodes without the system `__start__` / `__end__`: for the `Interrupts` menu and the `As Node` picker. */
 export const userNodeIds = (graph?: AssistantGraph): string[] =>
@@ -79,11 +100,8 @@ export const userNodeIds = (graph?: AssistantGraph): string[] =>
  * graph (`xray`) from the server and shows exactly this collapsed form.
  */
 export function collapseSubgraphs(graph: AssistantGraph, subgraphs: string[], expanded: string[]): AssistantGraph {
-  const collapse = new Set(subgraphs.filter((s) => !expanded.includes(s)));
-  const map = (id: string) => {
-    const parent = subgraphOf(id);
-    return parent && collapse.has(parent) ? parent : id;
-  };
+  // The outermost collapsed subgraph wins: everything deeper hides behind its node
+  const map = (id: string) => ancestors(id, subgraphs).find((s) => !expanded.includes(s)) ?? id;
   const nodes: AssistantGraph["nodes"] = [];
   const seen = new Set<string>();
   for (const n of graph.nodes) {
@@ -115,7 +133,7 @@ const nodeName = (n: RawNode): string => {
   return n.name ?? String(n.id);
 };
 
-export function layoutGraph(graph: AssistantGraph, expanded: string[] = []): Layout {
+export function layoutGraph(graph: AssistantGraph, expanded: string[] = [], subgraphs: string[] = expanded): Layout {
   const ids = graph.nodes.map((n) => String(n.id));
   const names = new Map(graph.nodes.map((n) => [String(n.id), nodeName(n)]));
 
@@ -142,7 +160,7 @@ export function layoutGraph(graph: AssistantGraph, expanded: string[] = []): Lay
   // Shift to the origin; a quarter pixel is the same precision as the reference (82.75)
   const q = (v: number) => Math.round(v * 4) / 4;
   const nodes = raw.map((n) => ({ ...n, name: shortName(n.name), x: q(n.x - minX), y: q(n.y - minY) }));
-  const groups = frameSubgraphs(nodes, expanded);
+  const groups = frameSubgraphs(nodes, expanded, subgraphs);
   // The subgraph frame extends left of the nested nodes: shift everything so the canvas
   // still starts at zero, as the reference does
   const shift = -Math.min(0, ...groups.map((g) => g.x));
@@ -177,27 +195,42 @@ export function layoutGraph(graph: AssistantGraph, expanded: string[] = []): Lay
  * First dagre lays everything out as a regular graph, then rows are spread: nested
  * nodes and everything below them move down by the top frame padding, and what lies
  * below the subgraph moves down by the bottom padding as well. Thus the row step at the
- * frame boundary becomes 107 px instead of 82 px, exactly as in the reference.
+ * frame boundary becomes 107 px instead of 82 px, exactly as in the reference; a subgraph
+ * inside a subgraph adds its own 25 px on each side, so the step grows again.
+ *
+ * The frames themselves are measured from the inside out, so a frame encloses both the
+ * nodes and the frames of the subgraphs nested in it.
  */
-function frameSubgraphs(nodes: LaidOutNode[], expanded: string[]): LaidOutGroup[] {
-  const groups: LaidOutGroup[] = [];
-  const inner = (id: string) => nodes.filter((n) => subgraphOf(n.id) === id);
-  const order = expanded
-    .filter((id) => inner(id).length > 0)
-    .sort((a, b) => Math.min(...inner(a).map((n) => n.y)) - Math.min(...inner(b).map((n) => n.y)));
+function frameSubgraphs(nodes: LaidOutNode[], expanded: string[], subgraphs: string[]): LaidOutGroup[] {
+  const descendants = (id: string) => nodes.filter((n) => isInside(n.id, id));
+  // A subgraph is only drawn when every subgraph around it is expanded as well
+  const visible = expanded.filter(
+    (id) => descendants(id).length > 0 && ancestors(id, subgraphs).every((a) => expanded.includes(a)),
+  );
+  const topOf = (id: string) => Math.min(...descendants(id).map((n) => n.y));
+  // Outer subgraphs come first: their top row lies above the nested ones
+  const order = [...visible].sort((a, b) => topOf(a) - topOf(b) || a.length - b.length);
 
   for (const id of order) {
     // Top gap: move the subgraph itself and everything below it down
-    const above = Math.min(...inner(id).map((n) => n.y));
+    const above = topOf(id);
     for (const n of nodes) if (n.y >= above) n.y += SUBGRAPH_PAD_Y;
-
-    const top = Math.min(...inner(id).map((n) => n.y));
-    const bottom = Math.max(...inner(id).map((n) => n.y + n.height));
+    const bottom = Math.max(...descendants(id).map((n) => n.y + n.height));
     // Bottom gap: move down only what lies below the subgraph
     for (const n of nodes) if (n.y >= bottom) n.y += SUBGRAPH_PAD_Y;
+  }
 
-    const left = Math.min(...inner(id).map((n) => n.x));
-    const right = Math.max(...inner(id).map((n) => n.x + n.width));
+  const groups: LaidOutGroup[] = [];
+  // Innermost first: an outer frame is measured around the frames already built
+  for (const id of [...order].reverse()) {
+    const boxes = [
+      ...descendants(id).map((n) => ({ x: n.x, y: n.y, width: n.width, height: n.height })),
+      ...groups.filter((g) => isInside(g.id, id)),
+    ];
+    const left = Math.min(...boxes.map((b) => b.x));
+    const right = Math.max(...boxes.map((b) => b.x + b.width));
+    const top = Math.min(...boxes.map((b) => b.y));
+    const bottom = Math.max(...boxes.map((b) => b.y + b.height));
     groups.push({
       id,
       name: id,
@@ -207,5 +240,6 @@ function frameSubgraphs(nodes: LaidOutNode[], expanded: string[]): LaidOutGroup[
       height: bottom - top + 2 * SUBGRAPH_PAD_Y,
     });
   }
-  return groups;
+  // Back to outermost-first: React Flow needs a parent frame before the frames inside it
+  return groups.reverse();
 }
