@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useResettableState } from "@/hooks/useResettableState";
 import { ArrowRight, ChevronDown, ChevronRight, Pencil, User } from "lucide-react";
 import type { ThreadState } from "@langchain/langgraph-sdk";
 import { cx } from "@/lib/cx";
@@ -56,7 +57,9 @@ export function NodeRecord({
   const setHoverNode = useRun((s) => s.setHoverNode);
   const isSubgraph = useStudio((s) => s.subgraphs.includes(entry.node));
   // Subgraph steps in the log expand independently of the frame on the canvas
-  const [steps, setSteps] = useState(false);
+  // Changing the detail level collapses the steps again, as in the reference
+  const detail = useRun((s) => s.detail);
+  const [steps, setSteps] = useResettableState(false, detail);
   const sticky = { top: stickyTop(depth), zIndex: stickyZ(depth) };
 
   return (
@@ -161,7 +164,6 @@ function SubgraphLog({ ns, depth }: { ns: string; depth: number }) {
   }, [threadId, ns]);
 
   if (!entries.length) return null;
-  const lastNode = [...entries].reverse().find((e) => e.kind === "node")?.key;
   return (
     <div className="flex flex-col">
       {entries.map((e) =>
@@ -172,7 +174,8 @@ function SubgraphLog({ ns, depth }: { ns: string; depth: number }) {
             key={e.key}
             entry={e}
             depth={depth}
-            defaultOpen={detail === 2 || e.node === "__start__" || e.key === lastNode}
+            // Nested records follow the level only: all collapsed below 2, all open from 2
+            defaultOpen={detail >= 2}
           />
         ),
       )}

@@ -39,10 +39,13 @@ const ROLE_TITLES: Record<string, string> = {
   function: "Function",
 };
 
-export function messageKind(m: MessageLike, fallback = ""): MessageKind {
-  const raw = String(m.type ?? m.role ?? fallback)
+const rawKind = (m: MessageLike, fallback: string) =>
+  String(m.type ?? m.role ?? fallback)
     .toLowerCase()
     .replace(/message$/, "");
+
+export function messageKind(m: MessageLike, fallback = ""): MessageKind {
+  const raw = rawKind(m, fallback);
   return KIND_ALIASES[raw] ?? raw;
 }
 
@@ -52,9 +55,13 @@ export function roleLabel(m: MessageLike): string {
   return (ROLE_TITLES[kind] ?? kind).toUpperCase();
 }
 
-/** Role as a tree node title: `Human`, `AI`, `Tool` — as in the reference. */
+/**
+ * Role as a tree node title: `Human`, `AI`, `Tool` — as in the reference. Unlike the
+ * bubble label, the title does not alias OpenAI roles: a `role: "assistant"` message
+ * is titled `Assistant` (measured on the reference), while its bubble still says `AI`.
+ */
 export function roleTitle(m: MessageLike): string {
-  const kind = messageKind(m);
+  const kind = rawKind(m, "");
   return ROLE_TITLES[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 

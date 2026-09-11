@@ -32,6 +32,9 @@ describe("role labels", () => {
     expect(roleLabel({ type: "ai" })).toBe("AI");
     expect(roleTitle({ type: "tool" })).toBe("Tool");
     expect(roleTitle({ type: "chat" })).toBe("Chat");
+    // The tree title keeps OpenAI-style roles verbatim, the bubble label aliases them
+    expect(roleTitle({ role: "assistant" })).toBe("Assistant");
+    expect(roleLabel({ role: "assistant" })).toBe("AI");
   });
 });
 
