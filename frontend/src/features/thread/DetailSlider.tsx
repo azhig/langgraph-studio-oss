@@ -35,11 +35,13 @@ export function DetailSlider() {
   };
 
   return (
-    <div className="absolute top-[80px] right-0 z-[6] ml-auto flex w-[120px] items-center gap-2 px-4">
+    <div className="absolute top-[75px] right-0 z-[6] ml-auto flex w-[120px] items-center gap-2 px-4">
       <Tooltip label="Set the level of detail for the thread log." className="flex w-full">
         <span
           ref={track}
-          className="relative flex w-full cursor-pointer touch-none items-center select-none"
+          // The row is as tall as the thumb: the reference hangs the tooltip off the thumb,
+          // so the gap below it must be measured from there, not from the 6 px track
+          className="relative flex h-4 w-full cursor-pointer touch-none items-center select-none"
           data-testid="thread-info-level-slider"
           onPointerDown={onPointerDown}
           onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && fromPointer(e.clientX)}
@@ -60,8 +62,10 @@ export function DetailSlider() {
               if (e.key === "Home") set(0);
               if (e.key === "End") set(max);
             }}
-            className="absolute block size-4 cursor-pointer rounded-full border-2 border-border-slider-thumb bg-white shadow"
-            style={{ left: `calc(${pct}% - 8px)` }}
+            className="absolute block size-4 cursor-pointer rounded-full border-2 border-border-slider-thumb bg-white shadow focus-visible:ring-2 focus-visible:ring-bg-control-active focus-visible:ring-offset-1 focus-visible:outline-none"
+            // The reference keeps the thumb inside the track: it travels `track - 16 px`,
+            // so at the ends its edge lines up with the track's, instead of hanging over it
+            style={{ left: `calc(${pct}% - ${(pct / 100) * 16}px)` }}
           />
         </span>
       </Tooltip>

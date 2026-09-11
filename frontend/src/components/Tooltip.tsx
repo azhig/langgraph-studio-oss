@@ -4,8 +4,8 @@ import { clampToViewport, useAnchoredPosition, type Placer } from "@/hooks/useAn
 
 /** Delay before showing, measured on the reference (≈700 ms). */
 const DELAY = 700;
-/** Gap to the tooltip border: the reference uses 8 px on the sides, 6 px above and below. */
-const GAP = { side: 8, stack: 6 };
+/** Gap to the tooltip border: the reference uses 8 px on the sides, 5 px above and below. */
+const GAP = { side: 8, stack: 5 };
 const EDGE = 4;
 
 type Side = "bottom" | "top" | "left" | "right";
@@ -29,8 +29,8 @@ function placer(side: Side): Placer {
 }
 
 /**
- * Hover tooltip. The reference renders it via a portal: a 14 px card with 8 px padding
- * and radius 6. The native `title` will not do — it looks different and has a different delay.
+ * Hover tooltip. The reference renders it via a portal: a card with 8 px padding, radius 6
+ * and 13 px text. The native `title` will not do — it looks different and has a different delay.
  */
 export function Tooltip({
   label,
@@ -77,7 +77,7 @@ export function Tooltip({
           <div
             ref={panel}
             role="tooltip"
-            className="pointer-events-none fixed z-[1400] max-w-[360px] overflow-hidden rounded-md border border-border-secondary bg-bg-elevated p-2 text-sm text-text-primary"
+            className="pointer-events-none fixed z-[1400] max-w-[320px] overflow-hidden rounded-md border border-border-secondary bg-bg-elevated p-2 text-xs leading-tight tracking-snug text-text-primary"
             style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? undefined : "hidden" }}
           >
             {label}
