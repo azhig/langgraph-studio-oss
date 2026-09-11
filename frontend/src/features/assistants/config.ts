@@ -1,5 +1,6 @@
 import type { GraphSchema } from "@langchain/langgraph-sdk";
 import { schemaType, type JsonSchema } from "@/lib/schema";
+import { parseText, type Lang } from "@/features/input/format";
 
 /**
  * Graph config fields (`config_schema`). The reference shows them in the
@@ -44,3 +45,23 @@ export function defaultConfig(schemas?: GraphSchema): Record<string, unknown> {
 
 /** Whether the graph has fields bound to a node: the gear icon on the node depends on it. */
 export const nodeHasConfig = (fields: ConfigField[], node: string) => fields.some((f) => f.nodes.includes(node));
+
+/** Result of reading the raw `configurable` editor: either a set of values or a message. */
+export interface RawConfig {
+  values?: Record<string, unknown>;
+  error?: string;
+}
+
+/**
+ * Editor text -> `configurable`. A graph without a `config_schema` has no fields to
+ * generate, so the reference edits the whole object as text. Empty text means an empty
+ * config; anything that is not a mapping cannot be sent as `config.configurable`.
+ */
+export function readConfigText(text: string, lang: Lang): RawConfig {
+  const parsed = parseText(text, lang);
+  if (parsed.error) return { error: parsed.error };
+  if (parsed.value === undefined || parsed.value === null) return { values: {} };
+  if (typeof parsed.value !== "object" || Array.isArray(parsed.value))
+    return { error: "Configuration must be a set of keys and values." };
+  return { values: parsed.value as Record<string, unknown> };
+}

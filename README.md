@@ -43,7 +43,8 @@ the API removes all of that.
 - **Interrupts**: static `Before` / `After` on any node, `Interrupt on all`, resuming
   dynamic `interrupt()` calls, writing values `As Node`.
 - **Assistants**: `Manage Assistants` with versions, `config_schema` fields, per-node
-  configuration, graph switching.
+  configuration, graph switching; a graph without a `config_schema` gets a raw
+  `config.configurable` editor (YAML or JSON).
 - **Chat mode** for graphs with typed `messages`: streaming replies, thread panel,
   tool-call display, edit and regenerate.
 - **Memory**: browse, create, edit and delete Store items by namespace.

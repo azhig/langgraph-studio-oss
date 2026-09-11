@@ -54,7 +54,7 @@ This document contains only what is needed for implementation, plus the patterns
 ```
 error:   bg #55160c  strong #f04438  text #fecdca
 success: bg #053321  strong #75e0a7  text #acefc6
-warning: bg #4c2400  strong #fec84b  text #fedf89
+warning: bg #4c2400  strong #fec84b  text #fedf89   (light: bg #fffaeb, icon #cd6002)
 ```
 
 ### Geometry and timing
@@ -400,14 +400,15 @@ with a `Review` button on the right — it expands this turn in detail without t
 | Element | Values |
 |---|---|
 | Modal | 960×640 (`w-[60rem] h-[40rem]`), radius 8, bg `--bg-elevated`, `z-index: 3000`; backdrop — `rgba(0,0,0,0.5)`, `z-index: 2999` |
-| Layout | `grid grid-cols-[2fr,5fr]`; left column with a right border `--border-secondary` |
+| Layout | content inset by 16 px (`p-4`), `grid grid-cols-[2fr,5fr]` — 265 / 663 of the 928 px left inside; left column `rounded-l-xl` with a right border `--border-secondary` |
 | List heading | `ASSISTANTS` — 14px/500 `--text-secondary`, `pt-2 px-2`; a `+ New` button next to it |
 | Assistant row | `p-2`, name 14px/500 `--text-tertiary`; active — a `4px` bar on the left in `--border-brand` and a `--bg-brand-tertiary` fill |
 | `Active` badge | `rounded-full border border-brand px-2 py-1`, 13px/500 `--text-brand-primary`, 8 px dot |
 | Form header | name 20px/600 (`max-w-[250px] truncate`), `Active` toggle 32×16 with a 12 px thumb, description 14px `--text-secondary`, below `⧉ Assistant ID` |
 | Field | label 14px (`capitalize`), description 12px `--text-tertiary`, editor — `rounded-lg border p-2 px-2.5 text-sm`; `Assistant Name` — compact `rounded-sm px-2 py-1 text-xs` |
 | Node avatar | 20 px circle, border and fill from the node tone (alpha 0.2), 10px/600 uppercase letter |
-| Footer | `sticky bottom-0 px-4`, `Delete` on the left (only for the user's own assistant), `Cancel` and `Create New Assistant` / `Save Assistant` on the right |
+| No `config_schema` | notice + a raw `configurable` editor instead of fields: `flex items-center gap-2 rounded-md border border-transparent px-4 py-3` on `--bg-warning`; 16 px warning triangle in `--text-warning-secondary` with a 4 px right margin, text 13px/1.2 `-0.02em` `--text-secondary` in a block with 20 px line boxes, docs link on the right 14px/1.5 `--text-link` (dark — `--text-brand-secondary`) with a 14 px external-link icon at a 2 px gap; the editor below is the usual `YAML v … RAW` panel, 16 px away |
+| Footer | `sticky bottom-0 px-4`, `Delete Assistant` on the left (only for the user's own assistant), `Cancel` and `Create New Assistant` / `Save` on the right |
 | Node settings | 896 px window (`w-[56rem]`), height by content (`max-h-[90vh]`); header `p-4`: avatar + `{node} Configuration` 16px/600, description 12px `--text-quaternary`, close cross on the right; at the bottom a `View full assistant settings` link, `Cancel` and `Save` |
 | Graph picker | 215 px panel, `p-2 gap-2`; heading `Select a graph` 14px/500 `--text-quaternary`; row — `w-full rounded-md p-2 text-sm font-medium`, checkmark on the current one |
 

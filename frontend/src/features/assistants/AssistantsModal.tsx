@@ -10,8 +10,9 @@ import { assistantTitle } from "./model";
 
 /**
  * `Manage Assistants`: the graph's assistants on the left, their settings on the right.
- * Sizes are taken from the reference: 960×640 canvas, `2fr / 5fr` columns, the divider is
- * the left column's right border; the active row is marked with a left bar and a fill.
+ * Sizes are taken from the reference: 960×640 canvas inset by 16 px, `2fr / 5fr` columns
+ * (265 / 663), the divider is the left column's right border; the active row is marked with
+ * a left bar and a fill.
  */
 export function AssistantsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const assistantId = useStudio((s) => s.assistantId);
@@ -39,8 +40,8 @@ function AssistantsPanel({ onClose }: { onClose: () => void }) {
   const fields = useMemo(() => configFields(schemas), [schemas]);
 
   return (
-    <div className="grid h-full grid-cols-[2fr_5fr]">
-      <div className="flex h-full min-h-0 flex-col border-r border-border-secondary">
+    <div className="grid h-full grid-cols-[2fr_5fr] p-4">
+      <div className="flex h-full min-h-0 flex-col rounded-l-xl border-r border-border-secondary">
         <div className="flex items-center justify-between px-2">
           <span className="pt-2 text-sm font-medium text-text-secondary">ASSISTANTS</span>
           <button

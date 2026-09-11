@@ -20,6 +20,7 @@
   --color-bg-error: var(--bg-error);
   --color-bg-error-secondary: var(--bg-error-secondary);
   --color-bg-error-subtle: var(--bg-error-subtle);
+  --color-bg-warning: var(--bg-warning);
 
   --color-border-default: var(--border-default);
   --color-border-secondary: var(--border-secondary);
@@ -44,6 +45,7 @@
   --color-text-error-primary: var(--text-error-primary);
   --color-text-error-secondary: var(--text-error-secondary);
   --color-text-error-tertiary: var(--text-error-tertiary);
+  --color-text-warning-secondary: var(--text-warning-secondary);
 
   /* Studio text scale: their `text-xs` is 13 px, not 12 px as in Tailwind by default.
      Letter spacing is measured too: 14px/-0.56px and 14px/+0.42px. */

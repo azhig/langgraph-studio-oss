@@ -7,6 +7,7 @@ import { Switch } from "@/components/Switch";
 import { getClient } from "@/api/client";
 import { useStudio } from "@/store/studio";
 import { ConfigInput } from "./ConfigInput";
+import { RawConfigField } from "./RawConfigField";
 import { defaultConfig, type ConfigField } from "./config";
 import { assistantTitle, isSystemAssistant } from "./model";
 
@@ -50,6 +51,8 @@ export function AssistantForm({
     ...defaultConfig(schemas),
     ...((assistant?.config?.configurable ?? {}) as Record<string, unknown>),
   }));
+  // Without a `config_schema` the values are edited as text, and bad text blocks saving
+  const [rawError, setRawError] = useState<string>();
   const [limit, setLimit] = useState(recursionLimit);
   const [tags, setTagList] = useState<string[]>(savedTags);
   const versions = useVersions(assistant, creating);
@@ -118,14 +121,24 @@ export function AssistantForm({
           />
         </div>
 
-        {fields.map((f) => (
-          <ConfigInput
-            key={f.key}
-            field={f}
-            value={values[f.key]}
-            onChange={(v) => setValues((prev) => ({ ...prev, [f.key]: v }))}
+        {fields.length === 0 ? (
+          <RawConfigField
+            initial={values}
+            onChange={({ values: next, error }) => {
+              setRawError(error);
+              if (next) setValues(next);
+            }}
           />
-        ))}
+        ) : (
+          fields.map((f) => (
+            <ConfigInput
+              key={f.key}
+              field={f}
+              value={values[f.key]}
+              onChange={(v) => setValues((prev) => ({ ...prev, [f.key]: v }))}
+            />
+          ))
+        )}
 
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
@@ -187,7 +200,7 @@ export function AssistantForm({
             onClick={() => void deleteAssistant(assistant.assistant_id).then(onClose)}
           >
             <Trash2 size={14} strokeWidth={1.8} />
-            Delete
+            Delete Assistant
           </button>
         ) : (
           <span />
@@ -199,10 +212,10 @@ export function AssistantForm({
           <button
             type="button"
             className="btn btn-brand-outline !rounded-sm"
-            disabled={busy}
+            disabled={busy || Boolean(rawError)}
             onClick={() => void apply()}
           >
-            {creates ? "Create New Assistant" : "Save Assistant"}
+            {creates ? "Create New Assistant" : "Save"}
           </button>
         </div>
       </div>
