@@ -11,8 +11,8 @@ Agent Servers. It gives you the graph view, thread log, interrupts, assistants, 
 chat mode of the hosted Studio, but runs entirely against your own server: no cloud,
 no account, no `?baseUrl=` and no cross-origin requests.
 
-Use it as a Python package mounted into `langgraph dev`, as a standalone proxy, or as a
-VS Code extension.
+Use it as a Python package mounted into `langgraph dev`, as a standalone proxy (Python or
+Node), or as a VS Code extension.
 
 ![Demo: submitting input, watching the run, inspecting state](docs/demo.gif)
 
@@ -140,8 +140,23 @@ The current mode is exposed at `GET <path>/api/connection`; the proxy also accep
 | Theme, split position, log detail level | browser `localStorage` |
 | Interrupts (`before` / `after`) and manual node positions | `localStorage`, per assistant, same keys as the original Studio |
 | Custom headers | `localStorage` (`studio.headers`) |
-| Proxy target | `~/.config/langgraph-studio-oss/connection.json` |
+| Proxy target (Python and Node proxies) | `~/.config/langgraph-studio-oss/connection.json` |
 | Assistant, mode and thread | URL query (`assistantId`, `mode`, `threadId`), so links can be shared |
+
+## Node package (npm)
+
+The standalone proxy is also available for Node 18+, with no Python at all. It is not on
+npm yet; install the tarball from the [latest release](https://github.com/azhig/Langgraph-studio-oss/releases):
+
+```bash
+npm install -g https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph-studio-oss-0.1.1.tgz
+langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
+# → http://127.0.0.1:8100/studio
+```
+
+Same flags, same **Connected** dialog and the same `~/.config/langgraph-studio-oss/connection.json`
+as the Python proxy. A running Agent Server is still required (see the VS Code section
+below for how to start one).
 
 ## VS Code extension
 
@@ -201,6 +216,7 @@ pnpm check                  # typecheck + eslint + prettier + vitest
 pnpm build                  # writes src/langgraph_studio_oss/static and vscode/media
 
 cd ../vscode && pnpm check  # extension: typecheck + vitest
+cd ../node && pnpm check    # Node proxy: syntax check + vitest
 ```
 
 How the code is organised is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);

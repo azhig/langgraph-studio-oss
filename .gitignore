@@ -18,6 +18,11 @@ vscode/out/
 vscode/media/
 vscode/*.vsix
 
+# Node package
+node/node_modules/
+node/media/
+node/*.tgz
+
 # Frontend
 frontend/node_modules/
 frontend/dist/

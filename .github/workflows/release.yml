@@ -23,6 +23,7 @@ jobs:
           cache-dependency-path: |
             frontend/pnpm-lock.yaml
             vscode/pnpm-lock.yaml
+            node/pnpm-lock.yaml
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
@@ -32,8 +33,9 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           py=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/langgraph_studio_oss/__init__.py)
           ext=$(node -p "require('./vscode/package.json').version")
-          echo "tag=$tag python=$py extension=$ext"
-          test "$tag" = "$py" && test "$tag" = "$ext"
+          npmv=$(node -p "require('./node/package.json').version")
+          echo "tag=$tag python=$py extension=$ext npm=$npmv"
+          test "$tag" = "$py" && test "$tag" = "$ext" && test "$tag" = "$npmv"
 
       - name: Build the UI
         run: pnpm install --frozen-lockfile && pnpm check && pnpm build
@@ -42,6 +44,10 @@ jobs:
       - name: Build the VS Code extension
         run: pnpm install --frozen-lockfile && pnpm check && pnpm build && pnpm package
         working-directory: vscode
+
+      - name: Build the npm tarball
+        run: pnpm install --frozen-lockfile && pnpm check && pnpm package
+        working-directory: node
 
       - name: Build the Python package (wheel and sdist)
         run: |
@@ -55,5 +61,6 @@ jobs:
           generate_release_notes: true
           files: |
             vscode/*.vsix
+            node/*.tgz
             dist/*.whl
             dist/*.tar.gz

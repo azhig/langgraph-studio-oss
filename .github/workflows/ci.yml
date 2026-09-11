@@ -21,6 +21,7 @@ jobs:
           cache-dependency-path: |
             frontend/pnpm-lock.yaml
             vscode/pnpm-lock.yaml
+            node/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: pnpm check
@@ -33,6 +34,10 @@ jobs:
         working-directory: vscode
       - run: pnpm build
         working-directory: vscode
+      - run: pnpm install --frozen-lockfile
+        working-directory: node
+      - run: pnpm check
+        working-directory: node
 
   python:
     name: Python ${{ matrix.python }}

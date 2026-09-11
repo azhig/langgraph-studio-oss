@@ -1,0 +1,4 @@
+test/
+vitest.config.mjs
+node_modules/
+*.tgz
