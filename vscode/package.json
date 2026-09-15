@@ -4,6 +4,7 @@
   "description": "Unofficial, community-built LangGraph Studio for your local Agent Server: graph, threads, interrupts, assistants and memory. Not affiliated with LangChain, Inc.",
   "version": "0.1.9",
   "publisher": "azhig",
+  "icon": "icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
