@@ -1,7 +1,7 @@
 # LangGraph Studio (Unofficial)
 
-[![CI](https://github.com/azhig/Langgraph-studio-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/azhig/Langgraph-studio-oss/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/azhig/Langgraph-studio-oss?include_prereleases)](https://github.com/azhig/Langgraph-studio-oss/releases)
+[![CI](https://github.com/azhig/langgraph-studio-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/azhig/langgraph-studio-oss/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/azhig/langgraph-studio-oss?include_prereleases)](https://github.com/azhig/langgraph-studio-oss/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
 ![VS Code 1.95+](https://img.shields.io/badge/VS%20Code-1.95%2B-007ACC)
@@ -63,10 +63,10 @@ the cloud platform, which this project does not use.
 ## Python package
 
 The package is not on PyPI yet. Install the wheel from the
-[latest release](https://github.com/azhig/Langgraph-studio-oss/releases):
+[latest release](https://github.com/azhig/langgraph-studio-oss/releases):
 
 ```bash
-pip install https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.7-py3-none-any.whl
+pip install https://github.com/azhig/langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.7-py3-none-any.whl
 ```
 
 ### Mode 1: mounted into `langgraph dev` (recommended)
@@ -147,10 +147,10 @@ The current mode is exposed at `GET <path>/api/connection`; the proxy also accep
 ## Node package (npm)
 
 The standalone proxy is also available for Node 18+, with no Python at all. It is not on
-npm yet; install the tarball from the [latest release](https://github.com/azhig/Langgraph-studio-oss/releases):
+npm yet; install the tarball from the [latest release](https://github.com/azhig/langgraph-studio-oss/releases):
 
 ```bash
-npm install -g https://github.com/azhig/Langgraph-studio-oss/releases/latest/download/langgraph-studio-oss-0.1.7.tgz
+npm install -g https://github.com/azhig/langgraph-studio-oss/releases/latest/download/langgraph-studio-oss-0.1.7.tgz
 langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
 # → http://127.0.0.1:8100/studio
 ```
@@ -178,7 +178,7 @@ Then tell the extension where it is: the default is `http://127.0.0.1:2024`; ano
 address or port goes into the `langgraphStudio.target` setting or the **Connected** dialog
 in the panel header. If the server is not reachable, the panel shows these steps.
 
-Download the `.vsix` from the [latest release](https://github.com/azhig/Langgraph-studio-oss/releases)
+Download the `.vsix` from the [latest release](https://github.com/azhig/langgraph-studio-oss/releases)
 (or build it, see below), install it with `code --install-extension <file>.vsix`, then run **LangGraph Studio (Unofficial): Open**
 from the Command Palette.
 

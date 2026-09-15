@@ -7,7 +7,7 @@
   "bin": { "langgraph-studio-oss": "bin/cli.mjs" },
   "files": ["bin", "lib", "media", "README.md"],
   "engines": { "node": ">=18" },
-  "repository": { "type": "git", "url": "https://github.com/azhig/Langgraph-studio-oss.git" },
+  "repository": { "type": "git", "url": "https://github.com/azhig/langgraph-studio-oss.git" },
   "keywords": ["langgraph", "langgraph studio", "agent server", "graph", "debugger"],
   "scripts": {
     "test": "vitest run",

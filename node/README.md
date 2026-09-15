@@ -13,5 +13,5 @@ Requires a running Agent Server (`pip install "langgraph-cli[inmem]"`, then
 **Connected** dialog is remembered in `~/.config/langgraph-studio-oss/connection.json`.
 
 Not affiliated with, endorsed by, or supported by LangChain, Inc. See the
-[project README](https://github.com/azhig/Langgraph-studio-oss) for the Python package
+[project README](https://github.com/azhig/langgraph-studio-oss) for the Python package
 and the VS Code extension. MIT.
