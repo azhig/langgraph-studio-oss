@@ -297,6 +297,11 @@ The reference uses CodeMirror 6; measured values:
 
 Card header: `Input`, `↑ ↓` arrows (history of submitted values),
 `View Raw` ↔ `View Rendered` (the whole input as a single JSON editor) and a collapse chevron.
+The raw/rendered choice is remembered in `ls:studio:viewRaw` and applies to every graph.
+
+Only the fields the user filled in are submitted: a field left at its prefilled value (`[]`, `{}`, `""`)
+is not sent, even a required one. Measured on a 13-key state with one message typed — the request
+carries `{messages: [...]}` alone, and that is all the `__start__` record lists.
 
 ## Thread log and dialogs
 
@@ -346,6 +351,7 @@ Moving the slider also decides what survives:
 | Run inside a subgraph | the canvas opens the subgraph while the run is inside it: the frame appears, the running nested node is bright and scaled, everything outside dims to 0.1; the subgraph folds back the moment the run steps out, and one the user opened by hand stays open |
 | Two levels of nesting | the whole chain around the running node opens (`mid` and `mid:leaf` for `mid:leaf:leaf_one`), and both frames stay at `opacity: 1` |
 | Nested steps in the log | a task inside a subgraph adds no record of its own — during a run the log stays flat, the nested steps are read from the subgraph history when the record is opened |
+| Subgraph checkpoints | not logged either: only top-level checkpoints make rows and open turns — a subgraph's first checkpoint is an `input` one, and taking it for a turn boundary put a `TURN 2` header in the middle of the run |
 
 ### Execution errors
 

@@ -62,6 +62,30 @@ export function defaultValue(schema?: JsonSchema): unknown {
   }
 }
 
+export interface Built {
+  input?: Record<string, unknown>;
+  /** Parse error of a field, with its title; Submit is blocked on it. */
+  error?: string;
+}
+
+/**
+ * The input to submit. A field left at its prefilled value is not sent: the reference
+ * submits only what the user filled in, so the `__start__` record lists those keys alone
+ * instead of every key of the state with an empty value.
+ */
+export function buildInputValue(fields: Field[], text: Record<string, string>, lang: Record<string, Lang>): Built {
+  const input: Record<string, unknown> = {};
+  for (const f of fields) {
+    const l = lang[f.key] ?? "yaml";
+    const t = text[f.key] ?? "";
+    if (t === toText(defaultValue(f.schema), l)) continue;
+    const parsed = parseText(t, l);
+    if (parsed.error) return { error: `${f.title}: ${parsed.error}` };
+    if (parsed.value !== undefined) input[f.key] = parsed.value;
+  }
+  return { input };
+}
+
 export interface Field {
   key: string;
   title: string;

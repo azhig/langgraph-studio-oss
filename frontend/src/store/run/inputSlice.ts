@@ -1,7 +1,7 @@
 import type { GraphSchema } from "@langchain/langgraph-sdk";
 import type { StateCreator } from "zustand";
 import { useStudio } from "@/store/studio";
-import { convertText, defaultValue, inputFields, parseText, toText, type Lang } from "@/features/input/format";
+import { buildInputValue, convertText, defaultValue, inputFields, toText, type Lang } from "@/features/input/format";
 
 /** Input form: text and language of each `input_schema` field, history of submissions. */
 export interface InputSlice {
@@ -22,7 +22,7 @@ export interface InputSlice {
   resetInput: () => void;
   stepHistory: (delta: number) => void;
   rememberInput: () => void;
-  /** Builds the input object; on a parse error returns the message. */
+  /** Builds the input object from the fields the user filled in; on a parse error returns the message. */
   buildInput: () => { input?: Record<string, unknown>; error?: string };
   setInputError: (message?: string) => void;
 }
@@ -76,13 +76,7 @@ export const createInputSlice: StateCreator<InputSlice, [], [], InputSlice> = (s
   buildInput: () => {
     const { schemas } = useStudio.getState();
     const { inputText, inputLang } = get();
-    const input: Record<string, unknown> = {};
-    for (const f of inputFields(schemas?.input_schema)) {
-      const parsed = parseText(inputText[f.key] ?? "", inputLang[f.key] ?? "yaml");
-      if (parsed.error) return { error: `${f.title}: ${parsed.error}` };
-      if (parsed.value !== undefined) input[f.key] = parsed.value;
-    }
-    return { input };
+    return buildInputValue(inputFields(schemas?.input_schema), inputText, inputLang);
   },
 
   setInputError: (inputError) => set({ inputError }),

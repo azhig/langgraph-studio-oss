@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertText, defaultValue, inputFields, isMessagesField, parseText, toText } from "./format";
+import { buildInputValue, convertText, defaultValue, inputFields, isMessagesField, parseText, toText } from "./format";
 
 describe("toText / parseText", () => {
   it("prints YAML without wrapping long strings and JSON with indent 2", () => {
@@ -68,5 +68,45 @@ describe("inputFields", () => {
     expect(isMessagesField(messages)).toBe(true);
     expect(isMessagesField(count)).toBe(false);
     expect(isMessagesField({ key: "messages", title: "m", required: false, schema: { type: "array" } })).toBe(false);
+  });
+});
+
+describe("buildInputValue", () => {
+  const fields = inputFields({
+    type: "object",
+    required: ["messages", "tools"],
+    properties: {
+      messages: { type: "array", items: {} },
+      tools: { type: "array" },
+      note: { type: "string" },
+      props: { type: "object" },
+    },
+  });
+  const lang = { messages: "yaml", tools: "yaml", note: "yaml", props: "json" } as const;
+  // What the form holds before the user touches it
+  const blank = Object.fromEntries(
+    fields.map((f) => [f.key, toText(defaultValue(f.schema), lang[f.key as keyof typeof lang])]),
+  );
+
+  it("sends only the fields the user filled in — measured on the reference with a 13-key state", () => {
+    expect(buildInputValue(fields, blank, lang)).toEqual({ input: {} });
+    const typed = { ...blank, messages: "- type: human\n  content: go" };
+    expect(buildInputValue(fields, typed, lang)).toEqual({ input: { messages: [{ type: "human", content: "go" }] } });
+    // A field typed back to its prefilled value counts as untouched, a required one included
+    expect(buildInputValue(fields, { ...typed, tools: "[]" }, lang).input).toEqual({
+      messages: [{ type: "human", content: "go" }],
+    });
+    // Something actually written goes through, whatever the type
+    expect(buildInputValue(fields, { ...typed, note: "hi", props: '{"a": 1}' }, lang).input).toEqual({
+      messages: [{ type: "human", content: "go" }],
+      note: "hi",
+      props: { a: 1 },
+    });
+  });
+
+  it("a parse error names the field and blocks the input", () => {
+    expect(buildInputValue(fields, { ...blank, props: "{" }, lang)).toEqual({
+      error: expect.stringMatching(/^props: /),
+    });
   });
 });

@@ -68,3 +68,22 @@ describe("addTask", () => {
     expect(s.getState().entries.filter((e) => e.kind === "node" && e.done)).toHaveLength(1);
   });
 });
+
+describe("addCheckpoint", () => {
+  const store = () => createStore<LogSlice>((set, get, api) => createLogSlice(set, get, api));
+
+  it("checkpoints of a subgraph add no rows and open no turn", () => {
+    const s = store();
+    s.getState().setPendingStart({ messages: [] });
+    s.getState().addCheckpoint({ checkpointId: "c1", source: "input" });
+    // The subgraph starts with an `input` checkpoint of its own, then loops
+    s.getState().addCheckpoint({ checkpointId: "s1", source: "input" }, ["mid:d3f0"]);
+    s.getState().addCheckpoint({ checkpointId: "s2", source: "loop" }, ["mid:d3f0"]);
+    s.getState().addCheckpoint({ checkpointId: "c2", source: "loop" });
+    const checkpoints = s.getState().entries.filter((e) => e.kind === "checkpoint");
+    expect(checkpoints.map((c) => c.checkpointId)).toEqual(["c1", "c2"]);
+    expect(checkpoints.filter((c) => c.turnStart).map((c) => c.checkpointId)).toEqual(["c1"]);
+    // The `__start__` record appeared once, after the run's own first checkpoint
+    expect(s.getState().entries.filter((e) => e.kind === "node")).toHaveLength(1);
+  });
+});

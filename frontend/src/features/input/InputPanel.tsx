@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, LoaderCircle, PlayCircle, Settings } from "lucide-react";
 import { isNumericType } from "@/lib/schema";
+import { readString, storageKeys, writeString } from "@/lib/storage";
 import { Popover } from "@/components/Popover";
 import { Select } from "@/components/Select";
 import { Switch } from "@/components/Switch";
@@ -22,7 +23,12 @@ import { inputFields, isMessagesField, parseText, toText, type Field, type Lang 
 export function InputPanel() {
   const schemas = useStudio((s) => s.schemas);
   const fields = useMemo(() => inputFields(schemas?.input_schema), [schemas]);
-  const [raw, setRaw] = useState(false);
+  // The raw/rendered choice is remembered across graphs and sessions — the reference does the same
+  const [raw, setRaw] = useState(() => readString(storageKeys.viewRaw) === "true");
+  const toggleRaw = () => {
+    writeString(storageKeys.viewRaw, String(!raw));
+    setRaw(!raw);
+  };
   const [collapsed, setCollapsed] = useState(false);
   const running = useStudioStream().isLoading;
 
@@ -34,7 +40,7 @@ export function InputPanel() {
             <div className="flex-1" />
           ) : (
             <div className="flex flex-col gap-2 p-3.5">
-              <Head raw={raw} onRaw={() => setRaw((v) => !v)} onCollapse={() => setCollapsed(true)} />
+              <Head raw={raw} onRaw={toggleRaw} onCollapse={() => setCollapsed(true)} />
               {raw ? <RawEditor fields={fields} /> : fields.map((f) => <FieldRow key={f.key} field={f} />)}
             </div>
           )}

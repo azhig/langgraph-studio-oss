@@ -61,6 +61,8 @@ export const storageKeys = {
   customHeaders: "studio.headers",
   splitRatio: "studio.split",
   detailLevel: "ls:studio:traceLogInfoLevel",
+  /** `View Raw` on the `Input` card: the reference remembers the choice for every graph. */
+  viewRaw: "ls:studio:viewRaw",
   interrupts: (assistantId?: string) => `ls:studio:${assistantId ?? "unknown"}:interrupts`,
   nodePositions: (assistantId?: string) => `ls:studio:${assistantId ?? "unknown"}:nodePosition`,
 } as const;

@@ -35,7 +35,12 @@ export interface LogSlice {
   /** Run error: shown as a panel at the failed node in the log. */
   error?: string;
 
-  addCheckpoint: (cp: { checkpointId?: string; values?: unknown; source?: string }) => void;
+  /**
+   * `namespace` marks a checkpoint of a subgraph. Those add nothing: the reference logs only
+   * the top-level ones, and a subgraph's first checkpoint is an `input` one — it would open
+   * a new turn in the middle of the run.
+   */
+  addCheckpoint: (cp: { checkpointId?: string; values?: unknown; source?: string }, namespace?: string[]) => void;
   setPendingStart: (input?: Record<string, unknown>) => void;
   /**
    * `namespace` marks a task running inside a subgraph (`<node>:<task id>` per level).
@@ -86,8 +91,9 @@ export const createLogSlice: StateCreator<LogSlice, [], [], LogSlice> = (set) =>
   detail: readDetail(),
   recordsEpoch: 0,
 
-  addCheckpoint: ({ checkpointId, values, source }) =>
+  addCheckpoint: ({ checkpointId, values, source }, namespace = []) =>
     set((s) => {
+      if (namespace.length) return {};
       const ts = Date.now();
       const entries: LogEntry[] = [
         ...s.entries,

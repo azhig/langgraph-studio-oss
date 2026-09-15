@@ -114,13 +114,16 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     reconnectOnMount: true,
     // By default the SDK takes the last 10 checkpoints; the log needs the whole run
     fetchStateHistory: { limit: 200 },
-    onCheckpointEvent: (data) =>
-      useRun.getState().addCheckpoint({
-        checkpointId: (data.config as { configurable?: { checkpoint_id?: string } } | undefined)?.configurable
-          ?.checkpoint_id,
-        values: data.values,
-        source: (data.metadata as { source?: string } | undefined)?.source,
-      }),
+    onCheckpointEvent: (data, { namespace }) =>
+      useRun.getState().addCheckpoint(
+        {
+          checkpointId: (data.config as { configurable?: { checkpoint_id?: string } } | undefined)?.configurable
+            ?.checkpoint_id,
+          values: data.values,
+          source: (data.metadata as { source?: string } | undefined)?.source,
+        },
+        namespace,
+      ),
     // The namespace tells a task inside a subgraph from a top-level one: with
     // `streamSubgraphs` the event arrives as `tasks|<node>:<task id>` per nesting level
     onTaskEvent: (data, { namespace }) =>
