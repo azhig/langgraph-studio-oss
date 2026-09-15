@@ -316,6 +316,8 @@ carries `{messages: [...]}` alone, and that is all the `__start__` record lists.
 | Avatar colors | text and border — from the node tone, background — tone with alpha `0.2` |
 | Node name | `14px/500`, tracking `-0.56px`, line-height `16.1px` |
 | Message card | `rounded-md bg-surface-level-2 px-4 py-1 w-fit`; role — `13px/600` uppercase `--text-tertiary`; text — `14px`, line-height `1.65`, tracking `-0.35px` |
+| Tool call in a message | under the role label, `gap-3` between calls: a `w-fit min-w-64 max-w-[80ch] rounded-lg border border-secondary font-mono` table — header row on `--bg-secondary` with the name in bold 14px and an always-visible `ID` chip (`rounded-full border px-1.5 py-0.5 font-sans text-xs`, 16 px copy icon), then one `p-3` row per argument: the key left of a `border-r`, the value `whitespace-pre-line` |
+| Tool message | no role label: a `rounded-full border border-secondary px-2` pill (22 px: 16 px wrench, the name in `Fira Code` 14px) and the result parsed from JSON into the foreign value tree, one `rounded-md bg-secondary px-4 py-1` bubble per key; text that is not JSON stays text |
 | Line heights | in the reference `text-xs` — 13px/18px, `text-sm` — 14px/20px (Tailwind defaults differ, so they are set explicitly) |
 | Expansion | depends on the detail slider (below) |
 
@@ -460,6 +462,9 @@ with a `Review` button on the right — it expands this turn in detail without t
 | Input field | `rounded-xl border border-default p-4 gap-4`, width up to 1000 px; textarea 14px, height from 40 px up to 20% of the screen |
 | Bar under the input | `Show tool calls` toggle 40×20 (16 thumb), `Upload files or images` button, a 32 px round send button on the right |
 | `Threads` panel | 250 px wide, left border; heading 14px/500, `New` and close buttons; row — 12px/500 `--text-secondary` with an ⓘ icon on the right |
+| Tool calls | with `Show tool calls` off, tool messages and model messages without text of their own are not shown at all; on — a model message lists its calls under the header (`tool-calls-list-in-message`): `px-4 py-3` name in `Fira Code` 16px with the call id chip (`rounded-md border p-1 text-sm text-tertiary`, monospace), the arguments as YAML on `--bg-secondary` (`p-3.5`, radius 4/4/8/8, 14px/21px), and one `YAML ▾` picker under the list, with no bar around it |
+| Tool message | full column width, not the 800 px of a reply; `TOOL` header, the tool name and call id on a `border-y px-4 py-3` row, the result parsed from JSON and printed as YAML in the same code block (`rounded-b-none`) over the `YAML ▾ … RAW ⧉` bar of the input editors |
+| Empty text | a message without text gets no text row: a tool-calling reply begins with its calls |
 
 ### State values
 

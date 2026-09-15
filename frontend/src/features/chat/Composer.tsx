@@ -56,8 +56,11 @@ export function Composer({
       />
       <div className="flex w-full items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Switch checked={showTools} onChange={onToggleTools} />
-          <span className="text-xs tracking-tighter">Show tool calls</span>
+          {/* The caption toggles the switch too, as in the reference */}
+          <label className="flex cursor-pointer items-center gap-2">
+            <Switch checked={showTools} onChange={onToggleTools} />
+            <span className="text-xs tracking-tighter">Show tool calls</span>
+          </label>
           <button type="button" aria-label="Attach files or images" className="btn btn-ghost !px-2">
             <Plus size={14} strokeWidth={1.8} />
             Attach files or images

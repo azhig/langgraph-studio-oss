@@ -1,6 +1,7 @@
 import { cx } from "@/lib/cx";
-import { asMessages, messageText, roleLabel } from "@/lib/messages";
+import { asMessages } from "@/lib/messages";
 import { useRun } from "@/store/run";
+import { MessageBody } from "./MessageBody";
 import { ValueTree } from "./ValueTree";
 
 /**
@@ -19,10 +20,7 @@ export function Updates({ updates, bare = false }: { updates?: Record<string, un
               key={i}
               className={cx("flex flex-col gap-2", !bare && "w-fit max-w-full rounded-md bg-bg-secondary px-4 py-1")}
             >
-              <span className="text-xs font-semibold text-text-tertiary uppercase">{roleLabel(m)}</span>
-              <span className="text-sm leading-[1.65] tracking-tight whitespace-pre-wrap text-text-primary">
-                {messageText(m.content)}
-              </span>
+              <MessageBody message={m} />
             </div>
           ))
         : content.map(([key, value]) => <Value key={key} name={key} value={value} />)}

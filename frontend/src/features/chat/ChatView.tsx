@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { messageKind, messageText, type MessageLike } from "@/lib/messages";
+import { isToolCallOnly, messageKind, messageText, type MessageLike } from "@/lib/messages";
 import { useCurrentAssistant } from "@/store/studio";
 import { useStudioStream } from "@/features/run/StreamProvider";
 import { StudioLogo } from "@/components/icons/StudioLogo";
@@ -21,8 +21,9 @@ export function ChatView() {
   const [draft, setDraft] = useState("");
   const messages = (values.messages as MessageLike[] | undefined) ?? [];
   const title = assistant ? assistantTitle(assistant) : "assistant";
-  // The reference hides tool messages while the toggle is off
-  const shown = showTools ? messages : messages.filter((m) => messageKind(m, "ai") !== "tool");
+  // With the toggle off the reference hides tool messages and the model messages that only
+  // call tools; a reply that also says something keeps its text and loses the calls
+  const shown = showTools ? messages : messages.filter((m) => messageKind(m, "ai") !== "tool" && !isToolCallOnly(m));
 
   return (
     <div className="flex h-full min-h-0 w-full bg-bg-secondary">
@@ -38,6 +39,7 @@ export function ChatView() {
                 <MessageCard
                   key={String(m.id ?? i)}
                   message={m}
+                  showTools={showTools}
                   onEdit={(msg) => setDraft(messageText(msg.content))}
                   onRegenerate={() => {
                     // Repeat the last human message before this reply

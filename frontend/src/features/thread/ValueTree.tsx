@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { asMessages, messageText, roleLabel, roleTitle, type MessageLike } from "@/lib/messages";
+import { asMessages, roleTitle, type MessageLike } from "@/lib/messages";
 import { useResettableState } from "@/hooks/useResettableState";
+import { MessageBody } from "./MessageBody";
 
 /**
  * State value tree. Structure taken from the reference (the `View state` popover and
@@ -13,6 +14,7 @@ export function ValueTree({
   depth = 0,
   foreign = false,
   leafBelow = false,
+  bubbles = false,
   defaultOpen,
 }: {
   name?: string;
@@ -25,6 +27,11 @@ export function ValueTree({
   foreign?: boolean;
   /** Only the "key with chevron, value below" view — this is how the thread log is built. */
   leafBelow?: boolean;
+  /**
+   * Children sit in `rounded-md bg-secondary px-4 py-1` bubbles of their own instead of an indent:
+   * this is how the reference draws a tool result in the log (the interrupt value stays flat).
+   */
+  bubbles?: boolean;
   /** Initial branch state; by default only the root is expanded. */
   defaultOpen?: boolean;
 }) {
@@ -116,8 +123,19 @@ export function ValueTree({
               messages ? (
                 <MessageNode key={i} title={key} message={messages[i]} defaultOpen={defaultOpen} />
               ) : (
-                <div key={key} className="pl-6">
-                  <ValueTree name={key} value={v} depth={depth + 1} foreign={foreign} leafBelow={leafBelow} />
+                <div
+                  key={key}
+                  className={bubbles ? "w-fit max-w-full rounded-md bg-bg-secondary px-4 py-1" : "pl-6"}
+                  data-testid={bubbles && isBranch(v) ? `foreign-data-tree-node-${key}` : undefined}
+                >
+                  <ValueTree
+                    name={key}
+                    value={v}
+                    depth={depth + 1}
+                    foreign={foreign}
+                    leafBelow={leafBelow}
+                    bubbles={bubbles}
+                  />
                 </div>
               ),
             )
@@ -137,7 +155,6 @@ export function ValueTree({
  */
 function MessageNode({ title, message, defaultOpen }: { title: string; message: MessageLike; defaultOpen?: boolean }) {
   const [open, setOpen] = useResettableState(defaultOpen ?? false, defaultOpen);
-  const text = messageText(message.content);
   const id = typeof message.id === "string" ? message.id : undefined;
 
   return (
@@ -172,8 +189,7 @@ function MessageNode({ title, message, defaultOpen }: { title: string; message: 
         // Inside the value tree the reference draws the message without a bubble: role and text in a row
         <span className="flex min-w-0 flex-col gap-2 pl-0 text-sm">
           <span className="flex flex-col gap-2 overflow-auto whitespace-pre-wrap">
-            <span className="text-xs font-semibold text-text-tertiary uppercase">{roleLabel(message)}</span>
-            <span className="text-sm leading-[1.65] tracking-tight text-text-primary">{text}</span>
+            <MessageBody message={message} />
           </span>
         </span>
       )}

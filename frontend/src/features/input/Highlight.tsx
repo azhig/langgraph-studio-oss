@@ -1,3 +1,4 @@
+import { cx } from "@/lib/cx";
 import type { Lang } from "./format";
 
 /**
@@ -9,9 +10,9 @@ import type { Lang } from "./format";
  * `Fira Code` 14px/21px, key is blue, string is green, number/date/`null` are orange,
  * list dash is gray, empty `{}` and `[]` are the regular text color.
  */
-export function HighlightedCode({ text, lang }: { text: string; lang: Lang }) {
+export function HighlightedCode({ text, lang, className }: { text: string; lang: Lang; className?: string }) {
   return (
-    <pre className="hl px-[13px] py-3 break-words whitespace-pre-wrap">
+    <pre className={cx("hl break-words whitespace-pre-wrap", className ?? "px-[13px] py-3")}>
       {lang === "json" ? highlightJson(text) : highlightYaml(text)}
     </pre>
   );

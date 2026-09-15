@@ -3,11 +3,14 @@ import {
   asMessages,
   buildContent,
   contentImages,
+  isToolCallOnly,
   messageKind,
   messagePlainText,
   messageText,
+  parsedContent,
   roleLabel,
   roleTitle,
+  toolCalls,
 } from "./messages";
 
 describe("messageKind", () => {
@@ -77,5 +80,25 @@ describe("asMessages", () => {
     expect(asMessages([{ content: "x" }])).toBeNull();
     expect(asMessages([])).toBeNull();
     expect(asMessages("x")).toBeNull();
+  });
+});
+
+describe("tool calls", () => {
+  const call = { name: "get_team", args: { unit: "sales" }, id: "call_1" };
+
+  it("a model message with calls and no text is the one the chat hides", () => {
+    expect(isToolCallOnly({ type: "ai", content: "", tool_calls: [call] })).toBe(true);
+    expect(isToolCallOnly({ type: "ai", content: "Looking it up", tool_calls: [call] })).toBe(false);
+    expect(isToolCallOnly({ type: "ai", content: "" })).toBe(false);
+    expect(isToolCallOnly({ type: "tool", content: "", tool_calls: [call] })).toBe(false);
+    expect(toolCalls({ type: "ai", content: "", tool_calls: [call, { args: {} } as never] })).toEqual([call]);
+  });
+
+  it("a tool result in JSON becomes data, anything else stays text", () => {
+    expect(parsedContent('{"members": ["Anna"]}')).toEqual({ members: ["Anna"] });
+    expect(parsedContent(" [1, 2]")).toEqual([1, 2]);
+    expect(parsedContent("plain text")).toBe("plain text");
+    expect(parsedContent("{not json")).toBe("{not json");
+    expect(parsedContent([{ type: "text", text: '{"a": 1}' }])).toEqual({ a: 1 });
   });
 });

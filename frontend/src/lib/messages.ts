@@ -8,6 +8,7 @@ export interface ToolCall {
   name: string;
   args?: unknown;
   id?: string;
+  type?: string;
 }
 
 export interface MessageLike {
@@ -17,6 +18,8 @@ export interface MessageLike {
   content?: unknown;
   name?: string;
   tool_calls?: ToolCall[];
+  /** On a tool message: the call it answers. */
+  tool_call_id?: string;
 }
 
 /** Content block: the reference stores attachments next to the text as a list of blocks. */
@@ -107,4 +110,33 @@ export function asMessages(value: unknown): MessageLike[] | null {
   if (!Array.isArray(value) || !value.length) return null;
   const ok = value.every((v) => v && typeof v === "object" && "content" in v && ("type" in v || "role" in v));
   return ok ? (value as MessageLike[]) : null;
+}
+
+/** Tool calls of a model message; anything without a name is not a call. */
+export function toolCalls(m: MessageLike): ToolCall[] {
+  return Array.isArray(m.tool_calls)
+    ? m.tool_calls.filter((c) => c && typeof c === "object" && typeof c.name === "string")
+    : [];
+}
+
+/**
+ * A model message that only calls tools, without a word of its own. With `Show tool calls`
+ * off the chat drops it altogether, as the reference does.
+ */
+export function isToolCallOnly(m: MessageLike): boolean {
+  return messageKind(m) !== "tool" && toolCalls(m).length > 0 && messagePlainText(m.content).trim() === "";
+}
+
+/**
+ * A tool result as data: the reference parses JSON content into a tree in the log and
+ * prints it as YAML in the chat; anything that is not JSON stays text.
+ */
+export function parsedContent(content: unknown): unknown {
+  const text = messageText(content);
+  if (!/^\s*[[{]/.test(text)) return text;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
 }
