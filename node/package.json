@@ -4,11 +4,33 @@
   "description": "Unofficial LangGraph Studio for your local Agent Server: serves the UI and proxies the API from one origin. Not affiliated with LangChain, Inc.",
   "license": "MIT",
   "type": "module",
-  "bin": { "langgraph-studio-oss": "bin/cli.mjs" },
-  "files": ["bin", "lib", "media", "README.md"],
-  "engines": { "node": ">=18" },
-  "repository": { "type": "git", "url": "https://github.com/azhig/langgraph-studio-oss.git" },
-  "keywords": ["langgraph", "langgraph studio", "agent server", "graph", "debugger"],
+  "bin": {
+    "langgraph-studio-oss": "bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "media",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azhig/langgraph-studio-oss.git"
+  },
+  "homepage": "https://github.com/azhig/langgraph-studio-oss#readme",
+  "bugs": {
+    "url": "https://github.com/azhig/langgraph-studio-oss/issues"
+  },
+  "keywords": [
+    "langgraph",
+    "langgraph studio",
+    "agent server",
+    "graph",
+    "debugger"
+  ],
   "scripts": {
     "test": "vitest run",
     "check": "node --check bin/cli.mjs && node --check lib/server.mjs && vitest run",

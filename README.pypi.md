@@ -1,14 +1,14 @@
-# LangGraph Studio (Unofficial), Node edition
+# LangGraph Studio (Unofficial)
 
-[![npm](https://img.shields.io/npm/v/langgraph-studio-oss)](https://www.npmjs.com/package/langgraph-studio-oss)
-[![Node 18+](https://img.shields.io/node/v/langgraph-studio-oss)](https://www.npmjs.com/package/langgraph-studio-oss)
+[![PyPI](https://img.shields.io/pypi/v/langgraph-studio-oss)](https://pypi.org/project/langgraph-studio-oss/)
+[![Python 3.9+](https://img.shields.io/pypi/pyversions/langgraph-studio-oss)](https://pypi.org/project/langgraph-studio-oss/)
 [![CI](https://img.shields.io/github/actions/workflow/status/azhig/langgraph-studio-oss/ci.yml?branch=main&label=CI)](https://github.com/azhig/langgraph-studio-oss/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/azhig/langgraph-studio-oss/blob/main/LICENSE)
 
 A self-hosted Studio for [LangGraph](https://github.com/langchain-ai/langgraph) Agent
-Servers, packaged as a small Node proxy: it serves the UI and forwards the API of your
-server from one origin, so the browser never makes a cross-origin request. No Python on
-the machine running the proxy, no cloud account.
+Servers: the graph view, thread log, time travel, interrupts, assistants, memory and chat
+mode of the hosted Studio, served by your own server on the same port. No cloud account,
+no `?baseUrl=`, no cross-origin requests.
 
 ![Submitting input, watching a tool-calling run stream its reply, then the same thread in Chat mode](https://raw.githubusercontent.com/azhig/langgraph-studio-oss/main/docs/demo.gif)
 
@@ -17,18 +17,52 @@ the machine running the proxy, no cloud account.
 > used here only to describe compatibility. The UI is written from scratch and contains
 > no code from the original Studio.
 
-## Usage
+## Install
 
 ```bash
-npx langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
-# → http://127.0.0.1:8100/studio
+pip install langgraph-studio-oss
 ```
 
-Or install it once and keep it around:
+Python 3.9+ and a LangGraph Agent Server: `langgraph dev` from `langgraph-cli[inmem]`, or
+any server exposing the Agent Server API 0.4 or newer.
+
+## Mode 1: mounted into `langgraph dev` (recommended)
+
+The UI is served by the Agent Server itself, on the same port. Add one line to your
+project's `langgraph.json`:
+
+```json
+{
+  "dependencies": ["."],
+  "graphs": { "agent": "./agent.py:graph" },
+  "http": { "app": "langgraph_studio_oss:app" }
+}
+```
+
+Run `langgraph dev` and open <http://127.0.0.1:2024/studio>. The API stays where it was
+(`/assistants`, `/threads`, ...); the UI calls it with relative paths.
+
+If you already have a custom `http.app`, mount the routes into it instead:
+
+```python
+from langgraph_studio_oss import mount_studio
+from my_project.webapp import app
+
+mount_studio(app)                      # adds /studio to an existing Starlette or FastAPI app
+mount_studio(app, path="/lg-studio")   # or at another path
+```
+
+`mount_studio` raises `ValueError` if the path is already taken by another route.
+
+## Mode 2: standalone proxy
+
+When `langgraph.json` cannot be changed, run the UI as its own process. It serves the
+page and forwards every other request to the Agent Server, so the browser still sees a
+single origin.
 
 ```bash
-npm install -g langgraph-studio-oss
-langgraph-studio-oss --target http://127.0.0.1:2024
+langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
+# → http://127.0.0.1:8100/studio
 ```
 
 | Flag | Default | Meaning |
@@ -41,32 +75,6 @@ langgraph-studio-oss --target http://127.0.0.1:2024
 The proxy streams Server-Sent Events without buffering, forwards pagination headers,
 cancels the upstream request when the browser disconnects, and has no timeout on
 streaming endpoints.
-
-## Requirements
-
-Node 18+ and a running LangGraph Agent Server. The usual way to get one is
-`langgraph dev` from a project with a `langgraph.json`:
-
-```bash
-pip install "langgraph-cli[inmem]"
-cd my-project
-langgraph dev --no-browser    # listens on http://127.0.0.1:2024
-```
-
-Any server exposing the Agent Server API 0.4 or newer works, local or remote.
-
-## Connection settings
-
-Click **Connected** in the header to open *Configure Studio connection*:
-
-- **Base URL** — `Connect` switches the proxy to the new server and remembers it in
-  `~/.config/langgraph-studio-oss/connection.json` (respects `XDG_CONFIG_HOME`). An
-  explicit `--target` on the command line overrides and replaces the saved value.
-- **Custom headers** — name/value pairs sent with every request, for servers behind
-  authentication. Stored in the browser only.
-
-The current target is exposed at `GET <path>/api/connection`; `PUT <path>/api/connection`
-with `{"target": "http://host:port"}` changes it.
 
 ## What you get
 
@@ -95,10 +103,34 @@ with `{"target": "http://host:port"}` changes it.
 Not included, by design: `Trace`, `Run experiment` and `Deploy` — they need LangSmith or
 the cloud platform, which this project does not use.
 
+## Connection settings
+
+Click **Connected** in the header to open *Configure Studio connection*:
+
+- **Base URL** — editable in proxy mode: `Connect` switches the proxy to the new server
+  and remembers it in `~/.config/langgraph-studio-oss/connection.json` (respects
+  `XDG_CONFIG_HOME`). An explicit `--target` on the command line overrides and replaces
+  the saved value. In mounted mode the address is fixed, because the page is served by
+  the server itself.
+- **Custom headers** — name/value pairs sent with every request, for servers behind
+  authentication. Stored in the browser only.
+
+The current mode is exposed at `GET <path>/api/connection`; the proxy also accepts
+`PUT <path>/api/connection` with `{"target": "http://host:port"}`.
+
+## What is persisted where
+
+| Setting | Where |
+|---|---|
+| Theme, split position, log detail level, `View Raw` | browser `localStorage` |
+| Interrupts (`before` / `after`) and manual node positions | `localStorage`, per assistant, same keys as the original Studio |
+| Custom headers | `localStorage` (`studio.headers`) |
+| Proxy target | `~/.config/langgraph-studio-oss/connection.json` |
+| Assistant, mode and thread | URL query (`assistantId`, `mode`, `threadId`), so links can be shared |
+
 ## Also available as
 
-- a **Python package** that mounts the UI straight into `langgraph dev`, plus the same
-  proxy in Python — [`langgraph-studio-oss` on PyPI](https://pypi.org/project/langgraph-studio-oss/);
+- a **Node proxy** with no Python at all — [`langgraph-studio-oss` on npm](https://www.npmjs.com/package/langgraph-studio-oss);
 - a **VS Code extension** — *LangGraph Studio (Unofficial)* on the Visual Studio Marketplace.
 
 Source, issues and the measured design notes: <https://github.com/azhig/langgraph-studio-oss>.

@@ -1,25 +1,36 @@
 # LangGraph Studio (Unofficial)
 
-[![CI](https://github.com/azhig/langgraph-studio-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/azhig/langgraph-studio-oss/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/azhig/langgraph-studio-oss/ci.yml?branch=main&label=CI)](https://github.com/azhig/langgraph-studio-oss/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/azhig/langgraph-studio-oss?include_prereleases)](https://github.com/azhig/langgraph-studio-oss/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
+![Node 18+](https://img.shields.io/badge/node-18%2B-339933)
 ![VS Code 1.95+](https://img.shields.io/badge/VS%20Code-1.95%2B-007ACC)
 
 An open-source, self-hosted Studio for [LangGraph](https://github.com/langchain-ai/langgraph)
-Agent Servers. It gives you the graph view, thread log, interrupts, assistants, memory and
-chat mode of the hosted Studio, but runs entirely against your own server: no cloud,
-no account, no `?baseUrl=` and no cross-origin requests.
+Agent Servers. It gives you the graph view, thread log, time travel, interrupts,
+assistants, memory and chat mode of the hosted Studio, but runs entirely against your own
+server: no cloud, no account, no `?baseUrl=` and no cross-origin requests.
 
-Use it as a Python package mounted into `langgraph dev`, as a standalone proxy (Python or
-Node), or as a VS Code extension.
+![Submitting input, watching a tool-calling run stream its reply, then the same thread in Chat mode](https://raw.githubusercontent.com/azhig/langgraph-studio-oss/main/docs/demo.gif)
 
-![Demo: submitting input, watching the run, inspecting state](docs/demo.gif)
-
-> **Unofficial.** This project is not affiliated with, endorsed by, or supported by
-> LangChain, Inc. LangGraph, LangChain and LangSmith are trademarks of LangChain, Inc. and
-> are used here only to describe compatibility. The UI is written from scratch; it contains
+> **Unofficial.** This project is not affiliated with, endorsed by, or sponsored by
+> LangChain, Inc. LangGraph, LangChain and LangSmith are trademarks of LangChain, Inc.,
+> used here only to describe compatibility. The UI is written from scratch and contains
 > no code from the original Studio.
+
+## Pick a flavour
+
+One UI, three ways to run it. Each has its own README written for its home:
+
+| Flavour | Install | Details |
+|---|---|---|
+| **Python package** — mounted into `langgraph dev` on the same port, or a standalone proxy | `pip install langgraph-studio-oss` | [README.pypi.md](README.pypi.md) |
+| **Node proxy** — the same proxy without Python | `npm install -g langgraph-studio-oss` | [node/README.md](node/README.md) |
+| **VS Code extension** — the Studio as an editor panel | *LangGraph Studio (Unofficial)* on the Marketplace | [vscode/README.md](vscode/README.md) |
+
+Every build is also attached to the [latest GitHub release](https://github.com/azhig/langgraph-studio-oss/releases/latest):
+the wheel and sdist, the npm tarball and the `.vsix`.
 
 ## Why
 
@@ -28,51 +39,13 @@ That means CORS errors against `http://127.0.0.1`, a mandatory LangSmith account
 tunnel allowlist to fight when you work around it. Serving the UI from the same origin as
 the API removes all of that.
 
-## Features
-
-- **Graph**: auto-layout identical to the original, conditional edges, subgraph
-  expand/collapse, drag, zoom, minimap, node hover cards with sources, targets and
-  interrupt toggles, live highlighting of the running node.
-- **Runs**: input form generated from `input_schema` (YAML/JSON, message builder for
-  `messages`), `Submit`, `Cancel`, input history, `messages` stream mode toggle.
-- **Threads**: thread picker with status, open by ID, `Cancel all pending runs`,
-  thread log with three detail levels, `View state` for every checkpoint (values, JSON,
-  full editor), relative timestamps.
-- **Time travel**: `Re-run from here`, `Fork` (edit a node's state and continue), branch
-  switching, error blocks with `Continue`.
-- **Interrupts**: static `Before` / `After` on any node, `Interrupt on all`, resuming
-  dynamic `interrupt()` calls, writing values `As Node`.
-- **Assistants**: `Manage Assistants` with versions, `config_schema` fields, per-node
-  configuration, graph switching; a graph without a `config_schema` gets a raw
-  `config.configurable` editor (YAML or JSON).
-- **Chat mode** for graphs with typed `messages`: streaming replies, thread panel,
-  tool-call display, edit and regenerate.
-- **Memory**: browse, create, edit and delete Store items by namespace.
-- Light and dark themes. Every size, color and delay was measured on the original Studio.
-
-Not included, by design: `Trace`, `Run experiment` and `Deploy`. They require LangSmith or
-the cloud platform, which this project does not use.
-
-## Requirements
-
-- Python 3.9+ and a LangGraph Agent Server (`langgraph dev` from `langgraph-cli[inmem]`,
-  or any server exposing the Agent Server API 0.4+).
-- For the VS Code extension: VS Code 1.95+. No Python is needed on the machine running
-  VS Code, only network access to the Agent Server.
-
-## Python package
-
-The package is not on PyPI yet. Install the wheel from the
-[latest release](https://github.com/azhig/langgraph-studio-oss/releases):
+## Quick start
 
 ```bash
-pip install https://github.com/azhig/langgraph-studio-oss/releases/latest/download/langgraph_studio_oss-0.1.9-py3-none-any.whl
+pip install langgraph-studio-oss
 ```
 
-### Mode 1: mounted into `langgraph dev` (recommended)
-
-The UI is served by the Agent Server itself, on the same port. Add one line to your
-project's `langgraph.json`:
+Add one line to your project's `langgraph.json` and run `langgraph dev`:
 
 ```json
 {
@@ -82,124 +55,48 @@ project's `langgraph.json`:
 }
 ```
 
-Run `langgraph dev` and open <http://127.0.0.1:2024/studio>. The API stays where it was
-(`/assistants`, `/threads`, ...); the UI calls it with relative paths.
+The Studio is at <http://127.0.0.1:2024/studio>; the API stays where it was. When
+`langgraph.json` cannot be changed, run the proxy instead — `langgraph-studio-oss
+--target http://127.0.0.1:2024 --port 8100` (Python or Node) — and open
+<http://127.0.0.1:8100/studio>.
 
-If you already have a custom `http.app`, mount the routes into it instead:
+## Features
 
-```python
-from langgraph_studio_oss import mount_studio
-from my_project.webapp import app
+- **Graph**: the same auto-layout as the original, conditional edges, subgraphs (nested
+  ones too) that expand and collapse, drag, zoom, minimap, hover cards with sources,
+  targets and interrupt toggles; the running node lights up, and a run inside a subgraph
+  opens it for as long as it is there.
+- **Runs**: input form generated from `input_schema` (YAML/JSON editors, a message
+  builder for `messages`), replies typed out live as the model streams them, `Cancel`,
+  input history, a stream-mode toggle.
+- **Thread log**: a detail slider from a turn summary down to every value, checkpoint
+  rows with `View state` (values, JSON, full editor), subgraph steps inside their record,
+  tool calls as tables and tool results as trees, log following during a run.
+- **Time travel**: `Re-run from here`, `Fork` (edit a node's state and continue), branch
+  switching, error blocks with `Continue`.
+- **Interrupts**: static `Before` / `After` on any node, `Interrupt on all`, replying to
+  dynamic `interrupt()` calls, writing values `As Node`.
+- **Assistants**: `Manage Assistants` with versions, `config_schema` fields, per-node
+  configuration, graph switching; a graph without a `config_schema` gets a raw
+  `config.configurable` editor.
+- **Chat mode** for graphs with typed `messages`: streaming replies, a threads panel,
+  tool calls behind a `Show tool calls` switch, edit and regenerate.
+- **Memory**: browse, create, edit and delete Store items by namespace.
+- **Connection dialog**: switch the proxy target, add custom headers for servers behind
+  authentication.
+- Light and dark themes. Every size, color and delay was measured on the original Studio;
+  the numbers are in [docs/DESIGN-TOKENS.md](docs/DESIGN-TOKENS.md).
 
-mount_studio(app)                      # adds /studio to an existing Starlette or FastAPI app
-mount_studio(app, path="/lg-studio")   # or at another path
-```
+Not included, by design: `Trace`, `Run experiment` and `Deploy`. They require LangSmith or
+the cloud platform, which this project does not use.
 
-`mount_studio` raises `ValueError` if the path is already taken by another route.
+## Requirements
 
-### Mode 2: standalone proxy
-
-When `langgraph.json` cannot be changed, run the UI as its own process (included in the package, no extras needed). It serves the
-page and forwards every other request to the Agent Server, so the browser still sees a
-single origin.
-
-```bash
-langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
-# → http://127.0.0.1:8100/studio
-```
-
-| Flag | Default | Meaning |
-|---|---|---|
-| `--target` | last saved target, else `http://127.0.0.1:2024` | Agent Server base URL |
-| `--host` | `127.0.0.1` | Interface to listen on |
-| `--port` | `8100` | Port for the UI |
-| `--path` | `/studio` | Path the UI is served at |
-
-The proxy streams Server-Sent Events without buffering, forwards pagination headers,
-cancels the upstream request when the browser disconnects, and has no timeout on
-streaming endpoints.
-
-### Connection settings
-
-Click **Connected** in the header to open *Configure Studio connection*:
-
-- **Base URL**: in proxy mode it is editable; `Connect` switches the proxy to the new
-  server and remembers it in `~/.config/langgraph-studio-oss/connection.json`
-  (respects `XDG_CONFIG_HOME`). An explicit `--target` on the command line overrides and
-  replaces the saved value. In mounted mode the address is fixed, because the page is
-  served by the server itself.
-- **Custom headers**: name/value pairs sent with every request, for servers behind
-  authentication. Stored in the browser only.
-
-The current mode is exposed at `GET <path>/api/connection`; the proxy also accepts
-`PUT <path>/api/connection` with `{"target": "http://host:port"}`.
-
-### What is persisted where
-
-| Setting | Where |
-|---|---|
-| Theme, split position, log detail level | browser `localStorage` |
-| Interrupts (`before` / `after`) and manual node positions | `localStorage`, per assistant, same keys as the original Studio |
-| Custom headers | `localStorage` (`studio.headers`) |
-| Proxy target (Python and Node proxies) | `~/.config/langgraph-studio-oss/connection.json` |
-| Assistant, mode and thread | URL query (`assistantId`, `mode`, `threadId`), so links can be shared |
-
-## Node package (npm)
-
-The standalone proxy is also available for Node 18+, with no Python at all. It is not on
-npm yet; install the tarball from the [latest release](https://github.com/azhig/langgraph-studio-oss/releases):
-
-```bash
-npm install -g https://github.com/azhig/langgraph-studio-oss/releases/latest/download/langgraph-studio-oss-0.1.9.tgz
-langgraph-studio-oss --target http://127.0.0.1:2024 --port 8100
-# → http://127.0.0.1:8100/studio
-```
-
-Same flags, same **Connected** dialog and the same `~/.config/langgraph-studio-oss/connection.json`
-as the Python proxy. A running Agent Server is still required (see the VS Code section
-below for how to start one).
-
-## VS Code extension
-
-The same UI opens as a panel inside VS Code. The extension host makes the HTTP requests
-to the Agent Server, so the webview needs no network access and nothing has to be
-installed in Python.
-
-**The extension does not start a server.** It connects to a LangGraph Agent Server that
-you run yourself, usually `langgraph dev` from your project:
-
-```bash
-pip install "langgraph-cli[inmem]"
-cd my-project                 # the directory with langgraph.json
-langgraph dev --no-browser    # listens on http://127.0.0.1:2024
-```
-
-Then tell the extension where it is: the default is `http://127.0.0.1:2024`; another
-address or port goes into the `langgraphStudio.target` setting or the **Connected** dialog
-in the panel header. If the server is not reachable, the panel shows these steps.
-
-Download the `.vsix` from the [latest release](https://github.com/azhig/langgraph-studio-oss/releases)
-(or build it, see below), install it with `code --install-extension <file>.vsix`, then run **LangGraph Studio (Unofficial): Open**
-from the Command Palette.
-
-| Setting | Default | Meaning |
-|---|---|---|
-| `langgraphStudio.target` | `http://127.0.0.1:2024` | Agent Server base URL |
-| `langgraphStudio.customHeaders` | `{}` | Headers added to every request |
-
-Both can also be changed from the **Connected** dialog inside the panel; `Connect` writes
-them back to the user settings. The panel state (theme, detail level, interrupts) is kept
-in the webview state. The active assistant and thread are not restored when the panel is
-reopened.
-
-Building the extension:
-
-```bash
-cd frontend && pnpm install && pnpm build   # also copies the UI into vscode/media
-cd ../vscode && pnpm install && pnpm build
-pnpm package                                # → langgraph-studio-unofficial-<version>.vsix
-code --install-extension langgraph-studio-unofficial-*.vsix
-```
+- A LangGraph Agent Server: `langgraph dev` from `langgraph-cli[inmem]`, or any server
+  exposing the Agent Server API 0.4+.
+- Python 3.9+ for the Python package, Node 18+ for the Node proxy, VS Code 1.95+ for the
+  extension. The extension and the Node proxy need no Python on their own machine, only
+  network access to the server.
 
 ## Development
 
@@ -214,14 +111,17 @@ ruff check src tests
 
 cd frontend && pnpm install
 pnpm check                  # typecheck + eslint + prettier + vitest
-pnpm build                  # writes src/langgraph_studio_oss/static and vscode/media
+pnpm build                  # writes src/langgraph_studio_oss/static, vscode/media and node/media
 
 cd ../vscode && pnpm check  # extension: typecheck + vitest
+pnpm package                # → langgraph-studio-unofficial-<version>.vsix
 cd ../node && pnpm check    # Node proxy: syntax check + vitest
 ```
 
 How the code is organised is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);
 the measured sizes, colors and timings live in [docs/DESIGN-TOKENS.md](docs/DESIGN-TOKENS.md).
+Releases are cut by pushing a `v*` tag: CI checks that the tag matches the version in
+`pyproject`, `vscode/package.json` and `node/package.json`, then attaches the artifacts.
 
 ## License
 

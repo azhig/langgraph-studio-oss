@@ -2,9 +2,10 @@
 name = "langgraph-studio-oss"
 dynamic = ["version"]
 description = "Unofficial, community-built Studio UI for local LangGraph Agent Servers, mounted at /studio. Not affiliated with LangChain, Inc."
-readme = "README.md"
+readme = "README.pypi.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
+keywords = ["langgraph", "langgraph studio", "agent server", "graph", "debugger", "starlette"]
 dependencies = [
     "starlette>=0.27",
     "httpx>=0.23",
@@ -22,6 +23,12 @@ classifiers = [
     "Framework :: AsyncIO",
     "Topic :: Software Development :: Debuggers",
 ]
+
+[project.urls]
+Homepage = "https://github.com/azhig/langgraph-studio-oss"
+Repository = "https://github.com/azhig/langgraph-studio-oss"
+Issues = "https://github.com/azhig/langgraph-studio-oss/issues"
+Changelog = "https://github.com/azhig/langgraph-studio-oss/releases"
 
 [project.optional-dependencies]
 dev = [
