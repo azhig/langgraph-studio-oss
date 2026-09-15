@@ -35,8 +35,13 @@ export interface NodeEntry {
   /** Checkpoint the node was launched from: needed for state editing. */
   checkpointId?: string;
   ts: number;
-  /** What the node wrote to the state. */
+  /** What the node wrote to the state; while it runs — what it has streamed so far. */
   updates?: Record<string, unknown>;
+  /**
+   * Message ids the thread already held when the node started. Anything newer belongs to
+   * this node, which is how its reply is shown while it is still being generated.
+   */
+  seen?: string[];
   error?: string;
   /** Dynamic `interrupt()` calls the node stopped at. */
   interrupts?: Interrupt[];

@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 import { readString, storageKeys, writeString } from "@/lib/storage";
-import { asUpdates, errorText, type Detail, type LogEntry, type TaskEventData } from "./types";
+import { asUpdates, errorText, type Detail, type LogEntry, type NodeEntry, type TaskEventData } from "./types";
 
 /**
  * Log of the running run and node highlighting on the canvas.
@@ -37,7 +37,17 @@ export interface LogSlice {
 
   addCheckpoint: (cp: { checkpointId?: string; values?: unknown; source?: string }) => void;
   setPendingStart: (input?: Record<string, unknown>) => void;
-  addTask: (task: TaskEventData) => void;
+  /**
+   * `namespace` marks a task running inside a subgraph (`<node>:<task id>` per level).
+   * Such tasks only move the highlight on the canvas: the reference keeps the log itself
+   * flat during a run, the nested steps are read from the subgraph history afterwards.
+   */
+  addTask: (task: TaskEventData, messageIds?: string[], namespace?: string[]) => void;
+  /**
+   * Messages of the thread as they arrive during a run: those a running node has added
+   * are shown in its record, so the reply types out live — as in the reference.
+   */
+  streamMessages: (messages: { id?: string }[]) => void;
   setRunning: (running: boolean) => void;
   setDetail: (detail: Detail) => void;
   setError: (message?: string) => void;
@@ -58,6 +68,14 @@ export function detailFromStorage(raw: string | null): Detail {
 }
 
 const readDetail = () => detailFromStorage(readString(storageKeys.detailLevel));
+
+/**
+ * Canvas id of a running task. The stream namespaces subgraph tasks by `<node>:<task id>`
+ * per nesting level, while the canvas names a nested node `mid:leaf:leaf_one` — the node
+ * names of the namespace plus the task name.
+ */
+export const taskNodeId = (name: string, namespace: string[] = []): string =>
+  [...namespace.map((level) => level.split(":")[0]), name].join(":");
 
 let seq = 0;
 const nextKey = () => `e${++seq}`;
@@ -89,16 +107,29 @@ export const createLogSlice: StateCreator<LogSlice, [], [], LogSlice> = (set) =>
    * A task event arrives twice: when scheduled (has `input`) and on completion
    * (has `result` or `error`). The first creates a log record, the second completes it.
    */
-  addTask: (task) => {
+  addTask: (task, messageIds = [], namespace = []) => {
+    const node = taskNodeId(task.name, namespace);
     const failure = errorText(task.error);
     const finished = "result" in task || failure !== undefined;
     if (!finished) {
+      // A task inside a subgraph gets no record of its own: it runs under the record of the
+      // subgraph node, which is already in the log — only the canvas highlight follows it in
       set((s) => ({
-        entries: [
-          ...s.entries,
-          { kind: "node", key: nextKey(), node: task.name, taskId: task.id, ts: Date.now(), done: false },
-        ],
-        activeNode: task.name,
+        entries: namespace.length
+          ? s.entries
+          : [
+              ...s.entries,
+              {
+                kind: "node",
+                key: nextKey(),
+                node: task.name,
+                taskId: task.id,
+                ts: Date.now(),
+                done: false,
+                seen: messageIds,
+              },
+            ],
+        activeNode: node,
       }));
       return;
     }
@@ -107,11 +138,21 @@ export const createLogSlice: StateCreator<LogSlice, [], [], LogSlice> = (set) =>
       entries: s.entries.map((e) =>
         e.kind === "node" && e.taskId === task.id ? { ...e, updates, done: true, error: failure } : e,
       ),
-      activeNode: s.activeNode === task.name ? undefined : s.activeNode,
-      errorNode: failure ? task.name : s.errorNode,
+      activeNode: s.activeNode === node ? undefined : s.activeNode,
+      errorNode: failure ? node : s.errorNode,
       error: failure ?? s.error,
     }));
   },
+
+  streamMessages: (messages) =>
+    set((s) => {
+      const running = [...s.entries].reverse().find((e): e is NodeEntry => e.kind === "node" && !e.done);
+      if (!running) return {};
+      const seen = new Set(running.seen ?? []);
+      const fresh = messages.filter((m) => !m.id || !seen.has(m.id));
+      if (!fresh.length) return {};
+      return { entries: s.entries.map((e) => (e === running ? { ...e, updates: { messages: fresh } } : e)) };
+    }),
 
   setRunning: (running) => set((s) => ({ running, activeNode: running ? s.activeNode : undefined })),
 

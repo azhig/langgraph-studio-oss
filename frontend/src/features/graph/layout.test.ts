@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AssistantGraph } from "@langchain/langgraph-sdk";
 import {
   collapseSubgraphs,
+  insideSubgraph,
   layoutGraph,
   matchesHover,
   nodeWidth,
@@ -9,6 +10,7 @@ import {
   shortName,
   subgraphOf,
   userNodeIds,
+  withOpenPath,
 } from "./layout";
 
 const node = (id: string) => ({ id, type: "runnable", data: { id: [id], name: id } });
@@ -168,6 +170,27 @@ describe("subgraphs", () => {
     expect(parentSubgraph("mid:mid_start", subgraphs)).toBe("mid");
     expect(parentSubgraph("top", subgraphs)).toBeUndefined();
     expect(shortName("mid:leaf:leaf_one")).toBe("leaf_one");
+  });
+
+  it("a run inside a subgraph opens it, and only it, for as long as the run is there", () => {
+    const subgraphs = ["mid", "mid:leaf"];
+    // Nothing runs: the canvas shows exactly what the user opened
+    expect(withOpenPath([], undefined, subgraphs)).toEqual([]);
+    expect(withOpenPath(["mid"], undefined, subgraphs)).toEqual(["mid"]);
+    // A node of the outer subgraph is running: only that subgraph opens
+    expect(withOpenPath([], "mid:mid_start", subgraphs)).toEqual(["mid"]);
+    // Deeper: the whole chain around the node, outermost first
+    expect(withOpenPath([], "mid:leaf:leaf_one", subgraphs)).toEqual(["mid", "mid:leaf"]);
+    // What the user opened by hand is kept and never doubled
+    expect(withOpenPath(["mid"], "mid:leaf:leaf_two", subgraphs)).toEqual(["mid", "mid:leaf"]);
+    // A top-level node adds nothing — and the same array comes back, so the canvas is not rebuilt
+    const open = ["mid"];
+    expect(withOpenPath(open, "bottom", subgraphs)).toBe(open);
+    // The frame lights up for a node running anywhere inside it
+    expect(insideSubgraph("mid:leaf:leaf_one", "mid")).toBe(true);
+    expect(insideSubgraph("mid:leaf:leaf_one", "mid:leaf")).toBe(true);
+    expect(insideSubgraph("bottom", "mid")).toBe(false);
+    expect(insideSubgraph(undefined, "mid")).toBe(false);
   });
 
   it("nested frames enclose one another and each boundary spreads the rows by 25 px", () => {

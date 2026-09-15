@@ -87,6 +87,21 @@ export const subgraphOf = (id: string): string | undefined =>
 export const matchesHover = (hoverNode: string | undefined, id: string): boolean =>
   hoverNode !== undefined && (hoverNode === id || isInside(hoverNode, id) || isInside(id, hoverNode));
 
+/** The node lies inside the subgraph: `mid:leaf:leaf_one` inside `mid` and inside `mid:leaf`. */
+export const insideSubgraph = (node: string | undefined, subgraph: string): boolean =>
+  node !== undefined && isInside(node, subgraph);
+
+/**
+ * Subgraphs that have to be open for the node to be on the canvas. While a run walks the
+ * inside of a subgraph the reference opens it — with the frame and the nested nodes — and
+ * closes it again the moment the run steps out, leaving what the user opened by hand alone.
+ */
+export const withOpenPath = (expanded: string[], node: string | undefined, subgraphs: string[]): string[] => {
+  if (!node) return expanded;
+  const closed = ancestors(node, subgraphs).filter((s) => !expanded.includes(s));
+  return closed.length ? [...expanded, ...closed] : expanded;
+};
+
 /** Short name of a nested node: the reference labels them without the subgraph prefixes. */
 export const shortName = (id: string): string => (id.includes(":") ? id.slice(id.lastIndexOf(":") + 1) : id);
 

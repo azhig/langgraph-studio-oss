@@ -337,6 +337,16 @@ Moving the slider also decides what survives:
 | any move between 1, 2 and 3 | open subgraph steps stay open; at level 1 their nested records are shown collapsed |
 | through 0 | the log is replaced by the turn summary, so the records unmount and open subgraph steps are forgotten |
 
+### Live run
+
+| What | How it behaves |
+|---|---|
+| Streamed reply | while a node runs, the tokens of its message land in its own record, so the text types out; the finished record then shows what the node actually wrote (the run asks the server for `messages-tuple`, the `Stream messages` switch next to `Submit` turns it off) |
+| Following the log | the log opens at the last step and sticks to the end while new steps and text arrive; scrolling up stops the following until the end is reached again — measured on the reference, which behaves the same |
+| Run inside a subgraph | the canvas opens the subgraph while the run is inside it: the frame appears, the running nested node is bright and scaled, everything outside dims to 0.1; the subgraph folds back the moment the run steps out, and one the user opened by hand stays open |
+| Two levels of nesting | the whole chain around the running node opens (`mid` and `mid:leaf` for `mid:leaf:leaf_one`), and both frames stay at `opacity: 1` |
+| Nested steps in the log | a task inside a subgraph adds no record of its own — during a run the log stays flat, the nested steps are read from the subgraph history when the record is opened |
+
 ### Execution errors
 
 When a node fails, the reference does not hide it in the console: the failed step is visible both on the canvas
@@ -386,6 +396,7 @@ with a `Review` button on the right — it expands this turn in detail without t
 | Nested log | inside the expanded entry: subgraph checkpoints and nodes as regular components, sticky headings at `top: 70px`, `z-index: 4` |
 | Subgraph in a subgraph | the inner one is a collapsed node inside the outer frame until it is opened; its record in the log behaves like any other subgraph record — the title opens its steps and unfolds the same subgraph on the canvas |
 | Nested frames | the inner frame hugs its own nodes with the same 35/25 padding, and every boundary spreads the rows by another 25 px (`top` to the deepest node: 82 + 25 + 25 + 82) |
+| Frame during a run | the frames around the running node keep `opacity: 1`, the rest dim to 0.1 like the nodes (hovering a record dims frames to 0.3 instead) |
 | Deviation | the reference does not widen the outer frame around the inner one, so the inner frame hangs over its right edge; we enclose it instead |
 | Deviation | the reference's log title toggles the canvas independently of the steps, so a subgraph opened on the canvas collapses when the log opens its steps; we set the canvas to whatever the log shows, so the two never contradict each other |
 

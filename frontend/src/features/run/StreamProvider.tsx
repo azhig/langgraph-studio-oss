@@ -18,8 +18,8 @@ import { branchesByCheckpoint, branchPathOf, type BranchInfo, type TreeSequence 
  * log entries (`tasks`, `checkpoints`) and the name of the running node.
  */
 
-// `messages` is needed for Chat mode: the model's reply is typed out as it is generated,
-// and `useStream` itself stitches the chunks into complete state messages. The mode
+// `messages-tuple` is what makes the reply type out: the SDK stitches the chunks into the
+// thread's messages, so both Chat mode and the running node's record fill in live. The mode
 // is turned off in the panel next to `Submit` — as in the reference.
 const STREAM_MODE = ["values", "tasks", "checkpoints"] as const;
 
@@ -46,7 +46,7 @@ const runOptions = () => {
   // `config.configurable` with the form values and `recursion_limit`.
   const { config, recursionLimit, tags, messagesStream } = useStudio.getState();
   return {
-    streamMode: messagesStream ? [...STREAM_MODE, "messages" as const] : [...STREAM_MODE],
+    streamMode: messagesStream ? [...STREAM_MODE, "messages-tuple" as const] : [...STREAM_MODE],
     streamResumable: true,
     streamSubgraphs: true,
     multitaskStrategy: "rollback" as const,
@@ -98,6 +98,9 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [threadId, setThreadId] = useState<string | null>(threadFromUrl);
   // The new branch's checkpoint to switch to once the history is re-read
   const pendingBranch = useRef<string | null>(null);
+  // Messages of the thread as the stream last saw them: the task callbacks need the list
+  // from before the node started to tell its own reply from what was already there
+  const messagesRef = useRef<{ id?: string }[]>([]);
   const prevAssistant = useRef(assistantId);
 
   const stream = useStream({
@@ -118,7 +121,14 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         values: data.values,
         source: (data.metadata as { source?: string } | undefined)?.source,
       }),
-    onTaskEvent: (data) => useRun.getState().addTask(data as unknown as TaskEventData),
+    // The namespace tells a task inside a subgraph from a top-level one: with
+    // `streamSubgraphs` the event arrives as `tasks|<node>:<task id>` per nesting level
+    onTaskEvent: (data, { namespace }) =>
+      useRun.getState().addTask(
+        data as unknown as TaskEventData,
+        messagesRef.current.map((m) => m.id).filter((id): id is string => Boolean(id)),
+        namespace,
+      ),
     onError: (error) => useRun.getState().setError(error instanceof Error ? error.message : errorText(error)),
   });
 
@@ -126,6 +136,14 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     useRun.getState().setRunning(stream.isLoading);
   }, [stream.isLoading]);
+
+  // Message chunks arrive in the thread state; while a node is running they belong to it,
+  // so its record shows the reply as it is typed out — the reference does the same
+  useEffect(() => {
+    const messages = (stream.values as { messages?: { id?: string }[] }).messages ?? [];
+    messagesRef.current = messages;
+    if (stream.isLoading && messages.length) useRun.getState().streamMessages(messages);
+  }, [stream.values, stream.isLoading]);
 
   // While a run is in progress, the log is drawn from stream events; once the server has returned
   // the thread history, the same steps come from it — temporary entries are removed to avoid duplicates.

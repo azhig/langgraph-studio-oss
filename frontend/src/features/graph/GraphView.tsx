@@ -6,12 +6,15 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useUpdateNodeInternals,
   type NodeTypes,
   type EdgeTypes,
 } from "@xyflow/react";
 import type { AssistantGraph, GraphSchema } from "@langchain/langgraph-sdk";
 import { useStudio } from "@/store/studio";
+import { useRun } from "@/store/run";
 import { buildFlow, configurableNodes } from "./flow";
+import { withOpenPath } from "./layout";
 import { clearSavedPositions, positionsKey, readSavedPositions, writeSavedPosition, type Point } from "./positions";
 import { GraphNode, type GraphFlowNode } from "./GraphNode";
 import { GraphEdge } from "./GraphEdge";
@@ -35,13 +38,23 @@ interface Props {
 function Canvas({ graph, schemas, subgraphs, expanded }: Props) {
   const theme = useStudio((s) => s.theme);
   const configurable = useMemo(() => configurableNodes(schemas), [schemas]);
+  /**
+   * A run that steps inside a subgraph opens it on the canvas: the reference shows which
+   * nested node is running and folds the subgraph back when the run leaves it. The set is
+   * memoized by its contents — rebuilding the nodes on every stream event would drop the
+   * sizes React Flow measured on them (see flow.ts).
+   */
+  const activeNode = useRun((s) => s.activeNode);
+  const openKey = withOpenPath(expanded, activeNode, subgraphs).join("\u0000");
+  const open = useMemo(() => (openKey ? openKey.split("\u0000") : []), [openKey]);
   const flow = useMemo(
-    () => buildFlow(graph, theme, configurable, subgraphs, expanded),
-    [graph, theme, configurable, subgraphs, expanded],
+    () => buildFlow(graph, theme, configurable, subgraphs, open),
+    [graph, theme, configurable, subgraphs, open],
   );
   const [nodes, setNodes, onNodesChange] = useNodesState(flow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flow.edges);
   const { fitView } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
 
   /**
    * Nodes the user moved themselves. Their position survives a canvas rebuild:
@@ -57,12 +70,30 @@ function Canvas({ graph, schemas, subgraphs, expanded }: Props) {
     moved.current = readSavedPositions(storageKey);
   }, [storageKey]);
 
-  // A redraw returns nodes to their auto-layout places, except those the user
-  // moved: their position is stored separately and survives subgraph expansion.
+  /**
+   * A redraw returns nodes to their auto-layout places, except those the user
+   * moved: their position is stored separately and survives subgraph expansion.
+   *
+   * The measured size is carried over to the new node object: React Flow drops the handle
+   * positions of a node it has not measured, and every edge attached to it disappears until
+   * something resizes it. A redraw in the middle of a run — a subgraph opening around the
+   * running node — hits exactly that.
+   */
   useEffect(() => {
-    setNodes(flow.nodes.map((n) => ({ ...n, position: moved.current.get(n.id) ?? n.position })));
+    setNodes((prev) => {
+      const before = new Map(prev.map((n) => [n.id, n]));
+      return flow.nodes.map((n) => ({
+        ...n,
+        position: moved.current.get(n.id) ?? n.position,
+        measured: before.get(n.id)?.measured,
+      }));
+    });
     setEdges(flow.edges);
-  }, [flow, setNodes, setEdges]);
+    // …and the handles are re-read afterwards: a node that kept its DOM element is never
+    // re-measured on its own, so the edges of the nodes around a subgraph that has just
+    // opened would stay off the canvas until something else resized them
+    updateNodeInternals(flow.nodes.map((n) => n.id));
+  }, [flow, setNodes, setEdges, updateNodeInternals]);
 
   // The graph is fitted once: on open and on assistant change. Expanding
   // a subgraph leaves the viewport alone: the reference behaves the same way.

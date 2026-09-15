@@ -5,7 +5,7 @@ import { useRun } from "@/store/run";
 import { HoverCard } from "@/components/HoverCard";
 import { CollapseGlyph, ExpandGlyph, SubgraphGlyph } from "@/components/icons/SubgraphGlyphs";
 import { NodeHoverCard } from "./NodeHoverCard";
-import { matchesHover } from "./layout";
+import { insideSubgraph, matchesHover } from "./layout";
 import type { NodePalette } from "./colors";
 
 export interface SubgraphFrameData extends Record<string, unknown> {
@@ -25,11 +25,16 @@ function SubgraphFrameComponent({ id, data }: NodeProps<SubgraphFlowNode>) {
   const { name, palette } = data;
   const toggleSubgraph = useStudio((s) => s.toggleSubgraph);
   // The frame keeps its full color while the record of the subgraph or of a node inside it
-  // is hovered; only the nodes themselves are raised, as in the reference
+  // is hovered; only the nodes themselves are raised, as in the reference.
+  // A run inside the subgraph keeps the frame lit the same way — measured on the reference:
+  // the frame of the running subgraph stays at 1 while everything outside falls to 0.1.
   const dimmed = useRun((s) => {
     if (s.hoverNode) return !matchesHover(s.hoverNode, id);
-    return Boolean(s.activeNode) || Boolean(s.errorNode);
+    if (s.activeNode) return !insideSubgraph(s.activeNode, id);
+    if (s.errorNode) return !insideSubgraph(s.errorNode, id);
+    return false;
   });
+  const dimLevel = useRun((s) => (s.hoverNode ? 0.3 : 0.1));
 
   return (
     <HoverCard
@@ -42,7 +47,7 @@ function SubgraphFrameComponent({ id, data }: NodeProps<SubgraphFlowNode>) {
           color: palette.text,
           backgroundColor: palette.background,
           borderColor: palette.border,
-          opacity: dimmed ? 0.3 : 1,
+          opacity: dimmed ? dimLevel : 1,
         }}
         onClick={() => toggleSubgraph(id)}
       >
